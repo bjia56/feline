@@ -12,8 +12,6 @@ type fValue =
     | FelineInt of int
     | FelineString of string
 
-type fVariable = fType * fValue
-
 (*
  * Map types available to the interpreter
  *)
@@ -33,47 +31,36 @@ exception TooManyArguments
 (*
  * Utility functions used by the interpreter
  *)
-let check_var_type (arg: fVariable) : bool =
-    let (arg_t, arg_v) = arg in
-    match arg_t with
+let check_var_type (v: fValue) (t: fType) : bool =
+    match t with
     | NullType -> (
-        match arg_v with
+        match v with
         | FelineNull -> true
         | _ -> false
     )
     | IntType -> (
-        match arg_v with
+        match v with
         | FelineInt(i) -> true
         | _ -> false
     )
     | StringType -> (
-        match arg_v with
+        match v with
         | FelineString(s) -> true
         | _ -> false
     )
 
-let rec check_args (args: fVariable list) : bool =
-    match args with
-    | [] -> true
-    | hd::tail ->
-        if check_var_type hd then
-            check_args tail
-        else
-            false
-
-let check_args_or_fail (args: fVariable list) =
-    if not (check_args args) then
-        raise TypeMismatch
-
-let rec values_to_vars (values: fValue list) (var_types: fType list) : (fVariable list) =
+let rec check_args (values: fValue list) (types: fType list) =
     match values with
     | [] ->
-        if 0 = List.length var_types then
-            []
+        if 0 = List.length types then
+            ()
         else
             raise NotEnoughArguments
-    | hd :: tail ->
-        if 0 = List.length var_types then
+    | head::tail ->
+        if 0 = List.length types then
             raise TooManyArguments
         else
-            ((List.hd var_types), hd) :: (values_to_vars tail (List.tl var_types))
+            if check_var_type head (List.hd types) then
+                check_args tail (List.tl types)
+            else
+                raise TypeMismatch
