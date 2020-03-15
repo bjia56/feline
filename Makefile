@@ -1,7 +1,7 @@
 all:
-	ocamlbuild feline.native
+	ocamlbuild -Is builtin feline.native
 
 clean:
-	ocamlbuild -clean
+	ocamlbuild -Is builtin -clean
 
 .PHONY: all clean
