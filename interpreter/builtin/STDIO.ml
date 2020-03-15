@@ -1,18 +1,15 @@
 open Utils
 
 let meow (args: fValue list) : fValue =
-    let arg_vars = values_to_vars args [StringType] in
-    let () = check_args_or_fail arg_vars in
-    let (_, v) = List.hd arg_vars in
-    match v with
+    let () = check_args args [StringType] in
+    match List.hd args with
     | FelineString(s) ->
         let () = print_endline s in
         FelineNull
     | _ -> raise InternalInterpreterError
 
 let nom (args: fValue list) : fValue =
-    let arg_vars = values_to_vars args [] in
-    let () = check_args_or_fail arg_vars in
+    let () = check_args args [] in
     let s = read_line () in
     FelineString(s)
 
