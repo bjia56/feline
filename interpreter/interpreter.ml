@@ -13,3 +13,7 @@ let find_module (m: string) =
 
 let find_function (f: string) m =
     FelineFuncMap.find f m
+
+let rec eval (exp: Ast.expr) : fValue =
+    match exp with
+    | Ast.Ident(s) -> FelineString s
