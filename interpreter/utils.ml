@@ -31,7 +31,7 @@ exception NotEnoughArguments
 exception TooManyArguments
 
 (*
- * Utility functions
+ * Utility functions used by the interpreter
  *)
 let check_var_type (arg: fVariable) : bool =
     let (arg_t, arg_v) = arg in
