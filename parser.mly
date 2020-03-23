@@ -21,28 +21,36 @@ typ:
     | IDENT  { Ident($1) }
 
 func_decl:
-    HAI ME TEH typ FUNC IDENT vdecl_list stmt_list KTHXBAI  
+    HAI ME TEH typ FUNC IDENT formals_opt stmt_list KTHXBAI  
     {
       {
-        rtyp=typ;
+        rtyp=$4;
         fname=$6;
-        formals=vdecl_list
-        locals=$7
+        formals_opt=$7;
         body=$8
       }
     }
 
-vdecl_list:
+formals_opt:
   /*nothing*/ { [] }
-  | vdecl vdecl_list { $1 :: $3 }
+  | WIT formals_list { $2 }
+
+formals_list:
+  | formal { [$1] }
+  | formal formals_list { $1 :: $3 }
+
+formal:
+  | IDENT TEH typ { ($3, $1) } 
 
 vdecl:
-  I HAS A IDENT TEH typ { ($6, $4) }
+  | I HAS A IDENT TEH typ { ($6, $4) }
   
 stmt_list:
   /* nothing */ { [] }
   | stmt stmt_list { $1::$2 }
       
 stmt:
-  | expr        { Expr $1 }
-  | GIVEZ expr  { Return $2 }
+  vdecl ASSIGN expr NEWLINE { Seq($1, $3) }
+  | vdecl NEWLINE       { Bind $1 }
+  | expr NEWLINE        { Expr $1 }
+  | GIVEZ expr NEWLINE  { Return $2 }
