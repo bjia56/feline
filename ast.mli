@@ -1,14 +1,27 @@
 type typ = Int | String | Ident of string
 
-type expr =
-    | Ident of string
+type binop = 
+      Add
+    | Sub
+    | Mul
+    | Div
+    | Neq
+    | Eq
+    | Less
+    | Greater
+    | And
+    | Or
 
-type func_decl = {
-  rtyp: typ;
-  fname: string;
-  formals: bind list;
-  body: stmt list;
-}
+type unop = Not    
+
+type expr =
+    | IntLit of int
+    | BoolLit of bool
+    | StrLit of string
+    | Ident of string
+    | Binop of expr * binop * expr
+    | Unop of unop * expr
+    | Assign of string * expr
 
 type bind = typ * string
 
@@ -17,3 +30,12 @@ type stmt =
   | Return of expr
   | Bind of bind
   | Seq of bind * expr
+  | Blank
+
+type func_decl = {
+  rtyp: typ;
+  fname: string;
+  formals: bind list;
+  body: stmt list;
+}
+
