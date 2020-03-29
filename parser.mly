@@ -1,15 +1,16 @@
 %{ open Ast %}
 
-%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC WIT KTHXBAI QUESTION NEWLINE
+%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC WIT NOT SAYM AZ BIGGR SMALLR THAN KTHXBAI QUESTION NEWLINE
 %token PLUS MINUS TIMES DIVIDE ASSIGN
-%token EQ NEQ LT GT AND OR NOT
+%token AND OR NOT
 %token <string> IDENT
 %token <int> INTEGR
 %token <bool> BLIT  
 %token <string> STRIN
+%token EOF
 
-%start expr
-%type <Ast.expr> expr
+%start program
+%type <Ast.program> program
 
 %right ITZ
 %left OR
@@ -22,6 +23,14 @@
 
 %%
 
+program:
+  decls EOF { $1 }
+
+decls:
+  /* nothing */ { ([], [] ) }
+  | vdecl NEWLINE decls { (($1 :: fst $3), snd $3) }
+  | func_decl decls { (fst $2, ($1 :: snd $2)) }
+
 expr:
       INTEGR                          { IntLit($1)         }
     | BLIT			      { BoolLit($1)        } 
@@ -30,10 +39,10 @@ expr:
     | expr PLUS expr		      { Binop($1, Add, $3) } 
     | expr MINUS expr 		      { Binop($1, Sub, $3) }                   | expr TIMES expr                 { Binop($1, Mul, $3) }
     | expr DIVIDE expr                { Binop($1, Div, $3) }
-    | expr NEQ expr 		      { Binop($1, Neq, $3) }
-    | expr EQ expr		      { Binop($1, Eq, $3)  }
-    | expr LT expr		      { Binop($1, Less, $3) }
-    | expr GT expr		      { Binop($1, Greater, $3) }
+    | expr NOT SAYM AZ expr 	      { Binop($1, Neq, $5) }
+    | expr SAYM AZ expr		      { Binop($1, Eq, $4)  }
+    | expr SMALLR THAN expr           { Binop($1, Less, $4) }
+    | expr BIGGR THAN expr            { Binop($1, Greater, $4) }
     | expr AND expr		      { Binop($1, And, $3) }
     | expr OR expr		      { Binop($1, Or, $3) }
     | NOT expr			      { Unop(Not, $2)           }
@@ -42,7 +51,7 @@ expr:
 typ:
     | INTEGR { Int }
     | STRIN  { String }
-    | IDENT  { Ident($1) }
+    | IDENT  { TypIdent($1) }
 
 func_decl:
     HAI ME TEH typ FUNC IDENT formals_opt NEWLINE stmt_list KTHXBAI  

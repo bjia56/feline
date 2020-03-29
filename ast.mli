@@ -1,4 +1,4 @@
-type typ = Int | String | Ident of string
+type typ = Int | String | TypIdent of string
 
 type binop = 
       Add
@@ -39,3 +39,4 @@ type func_decl = {
   body: stmt list;
 }
 
+type program = bind list * func_decl list

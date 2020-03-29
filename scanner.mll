@@ -22,10 +22,12 @@ rule token =
     | "MYNUZ"				   { MINUS   }
     | "TYMEZ"				   { TIMES   }
     | "DIVYD"			           { DIVIDE  }
-    | "NO SAYM AS"		           { NEQ     }
-    | "SAYM AS"                            { EQ      }
-    | "BIGGR THAN"		           { GT      }
-    | "SMALLR THAN"			   { LT      }
+    | "NOT"				   { NOT     }
+    | "SAYM"				   { SAYM    }
+    | "AZ"				   { AZ      }
+    | "BIGGR"				   { BIGGR   }
+    | "SMALLR" 				   { SMALLR  }
+    | "THAN"				   { THAN    }
     | "AN"				   { AND     }
     | "OR"				   { OR      }
     | "OPOZIT"				   { NOT     } 
@@ -35,3 +37,4 @@ rule token =
     | "\"([^\"\\\\]|\\\\.)*\"" as str      { STRIN (str) }
     | ['a'-'z' 'A'-'Z' '_']
       ['a'-'z' 'A'-'Z' '_' '0'-'9']* as id { IDENT(id) }
+    | eof				   { EOF       }
