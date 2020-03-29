@@ -8,16 +8,13 @@ let ast_of_file file_name =
     ast
 
 let _ =
-    (*
-    if Array.length Sys.argv < 2 then
-        let ast = ast_of_chan stdin in
-        Interpreter.eval ast
-    else
+    let () = Printexc.record_backtrace true in
+    try (
+        (* Requires one cmd line argument, the input file *)
         let ast = ast_of_file Sys.argv.(1) in
-        Interpreter.eval ast
-    *)
-    let stdio_m = Interpreter.find_module "STDIO" in
-    let meow = Interpreter.find_function "MEOW" stdio_m in
-    let nom = Interpreter.find_function "NOM" stdio_m in
-    meow [(nom [])]
-
+        let res = Interpreter.eval_program ast in
+        match res with
+        | InterpreterTypes.FelineInt(i) -> print_string ((string_of_int i) ^ "\n")
+        | _ -> ()
+    ) with
+    | _ -> Printexc.print_backtrace stdout

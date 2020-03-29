@@ -1,8 +1,8 @@
 { open Parser }
 
 rule token =
-    parse [' ' '\t' '\r']                  { token lexbuf }
-    | '\n'                                 { NEWLINE }
+    parse [' ' '\t']                  { token lexbuf }
+    | ['\n' '\r']+                         { NEWLINE }
     | '?'                                  { QUESTION }
     | "I"                                  { I }
     | "HAS"                                { HAS }
@@ -22,12 +22,11 @@ rule token =
     | "MYNUZ"                              { MYNUZ }
     | "TYMEZ"                              { TYMEZ }
     | "DIVYD"                              { DIVYD }
-    | "NOT"                                { NOT }
-    | "SAYM"                               { SAYM }
-    | "AZ"                                 { AZ }
-    | "BIGGR"                              { BIGGR }
-    | "SMALLR"                             { SMALLR }
-    | "THAN"                               { THAN }
+    | "NOT" [' ' '\t']+ "SAYM"
+      [' ' '\t']+ "AZ"                     { NOT_SAYM_AZ }
+    | "SAYM" [' ' '\t']+ "AZ"              { SAYM_AZ }
+    | "BIGGR" [' ' '\t']+ "THAN"           { BIGGR_THAN }
+    | "SMALLR" [' ' '\t']+ "THAN"          { SMALLR_THAN }
     | "AN"                                 { AN }
     | "OR"                                 { OR }
     | "OPOZIT"                             { OPOZIT }

@@ -1,6 +1,8 @@
 %{ open Ast %}
 
-%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC WIT NOT SAYM AZ BIGGR SMALLR THAN KTHXBAI QUESTION NEWLINE
+%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC WIT KTHXBAI QUESTION NEWLINE
+%token NOT_SAYM_AZ SAYM_AZ
+%token BIGGR_THAN SMALLR_THAN
 %token PLUZ MYNUZ TYMEZ DIVYD
 %token AN OR OPOZIT
 %token <string> IDENT
@@ -12,21 +14,21 @@
 %start program
 %type <Ast.program> program
 
-%right ITZ
 %left OR AN
 %left OPOZIT
-%left BIGGR SMALLR SAYM
-%left DIVYD TYMEZ
+%left BIGGR_THAN SMALLR_THAN SAYM_AZ NOT_SAYM_AZ
 %left PLUZ MYNUZ
+%left DIVYD TYMEZ
 
 %%
 
 program:
-    | decls EOF { $1 }
+    | decls EOF         { $1 }
+    | decls NEWLINE EOF { $1 }
 
 decls:
-    | /* nothing */   { ([], [] ) }
-    | func_decl decls { (fst $2, ($1 :: snd $2)) }
+    | /* nothing */   { { classes=[]; functions=[] } }
+    | func_decl decls { { classes=$2.classes; functions=$1::$2.functions } }
 
 expr:
     | INTEGR                { IntLit($1) }
@@ -37,13 +39,13 @@ expr:
     | expr MYNUZ expr       { Binop($1, Sub, $3) }
     | expr TYMEZ expr       { Binop($1, Mul, $3) }
     | expr DIVYD expr       { Binop($1, Div, $3) }
-    | expr NOT SAYM AZ expr { Binop($1, Neq, $5) }
-    | expr SAYM AZ expr     { Binop($1, Eq, $4) }
-    | expr SMALLR THAN expr { Binop($1, Less, $4) }
-    | expr BIGGR THAN expr  { Binop($1, Greater, $4) }
+    | expr NOT_SAYM_AZ expr { Binop($1, Neq, $3) }
+    | expr SAYM_AZ expr     { Binop($1, Eq, $3) }
+    | expr SMALLR_THAN expr { Binop($1, Less, $3) }
+    | expr BIGGR_THAN expr  { Binop($1, Greater, $3) }
     | expr AN expr          { Binop($1, And, $3) }
     | expr OR expr          { Binop($1, Or, $3) }
-    | NOT expr              { Unop(Not, $2) }
+    | OPOZIT expr           { Unop(Not, $2) }
 
 typ:
     | INTEGR { Int }
@@ -57,7 +59,16 @@ func_decl:
                 rtyp=$4;
                 fname=$6;
                 formals=$7;
-                body=$9
+                body=$9;
+            }
+        }
+    | HAI ME TEH FUNC IDENT formals_opt NEWLINE stmt_list KTHXBAI
+        {
+            {
+                rtyp=Null;
+                fname=$5;
+                formals=$6;
+                body=$8;
             }
         }
 
@@ -85,4 +96,3 @@ stmt:
     | vdecl NEWLINE       { Bind $1 }
     | expr NEWLINE        { Expr $1 }
     | GIVEZ expr NEWLINE  { Return $2 }
-    | NEWLINE             { Blank }

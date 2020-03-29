@@ -1,36 +1,18 @@
-(*
- * Types available to the interpreter
- *)
-
-type fType =
-    | NullType
-    | IntType
-    | StringType
-
-type fValue =
-    | FelineNull
-    | FelineInt of int
-    | FelineString of string
-
-(*
- * Map types available to the interpreter
- *)
-
-module FelineModMap = Map.Make(String)
-module FelineFuncMap = Map.Make(String)
-
-(*
- * Exceptions available to the interpreter
- *)
-
-exception InternalInterpreterError
-exception TypeMismatch
-exception NotEnoughArguments
-exception TooManyArguments
+open InterpreterTypes
 
 (*
  * Utility functions used by the interpreter
  *)
+let int_of_fValue (v: fValue) : int =
+    match v with
+    | FelineInt(i) -> i
+    | _ -> raise TypeMismatch
+
+let bool_of_fValue (v: fValue) : bool =
+    match v with
+    | FelineBool(b) -> b
+    | _ -> raise TypeMismatch
+
 let check_var_type (v: fValue) (t: fType) : bool =
     match t with
     | NullType -> (
@@ -46,6 +28,16 @@ let check_var_type (v: fValue) (t: fType) : bool =
     | StringType -> (
         match v with
         | FelineString(s) -> true
+        | _ -> false
+    )
+    | BoolType -> (
+        match v with
+        | FelineBool(b) -> true
+        | _ -> false
+    )
+    | CustomType(s) -> (
+        match v with
+        | FelineCustom(n, f) -> s = n
         | _ -> false
     )
 

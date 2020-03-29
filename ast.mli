@@ -1,4 +1,5 @@
 type typ =
+    | Null
     | Int
     | String
     | TypIdent of string
@@ -33,7 +34,6 @@ type stmt =
     | Bind of bind
     | BindAssign of bind * expr
     | Assign of string * expr
-    | Blank
 
 type func_decl = {
     rtyp: typ;
@@ -42,4 +42,12 @@ type func_decl = {
     body: stmt list;
 }
 
-type program = bind list * func_decl list
+type class_decl = {
+    cname: string;
+    (* incomplete *)
+}
+
+type program = {
+    classes: class_decl list;
+    functions: func_decl list;
+}
