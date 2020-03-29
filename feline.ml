@@ -1,5 +1,5 @@
 let ast_of_chan chan =
-    Parser.expr Scanner.token (Lexing.from_channel chan)
+    Parser.program Scanner.token (Lexing.from_channel chan)
 
 let ast_of_file file_name =
     let file_chan = open_in file_name in
