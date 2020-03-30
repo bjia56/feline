@@ -30,6 +30,17 @@ decls:
     | /* nothing */   { { classes=[]; functions=[] } }
     | func_decl decls { { classes=$2.classes; functions=$1::$2.functions } }
 
+FUNCTCALL:
+	| MEOW WIT args
+
+args:
+	| expr
+	| expr args
+ 
+STRLIT:
+	| QUOTATION  QUOTATION
+	| QUOTATION id QUOTATION
+  
 expr:
     | INTEGR                { IntLit($1) }
     | BLIT                  { BoolLit($1) }
