@@ -25,6 +25,8 @@ type expr =
     | Ident of string
     | Binop of expr * binop * expr
     | Unop of unop * expr
+    | Functcall of functcall
+and functcall = string * expr list
 
 type bind = typ * string
 

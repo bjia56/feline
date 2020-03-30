@@ -1,6 +1,6 @@
 %{ open Ast %}
 
-%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC WIT KTHXBAI QUESTION NEWLINE
+%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC WIT KTHXBAI KTHX QUESTION NEWLINE
 %token NOT_SAYM_AZ SAYM_AZ
 %token BIGGR_THAN SMALLR_THAN
 %token PLUZ MYNUZ TYMEZ DIVYD
@@ -30,17 +30,6 @@ decls:
     | /* nothing */   { { classes=[]; functions=[] } }
     | func_decl decls { { classes=$2.classes; functions=$1::$2.functions } }
 
-FUNCTCALL:
-	| MEOW WIT args
-
-args:
-	| expr
-	| expr args
- 
-STRLIT:
-	| QUOTATION  QUOTATION
-	| QUOTATION id QUOTATION
-  
 expr:
     | INTEGR                { IntLit($1) }
     | BLIT                  { BoolLit($1) }
@@ -57,6 +46,7 @@ expr:
     | expr AN expr          { Binop($1, And, $3) }
     | expr OR expr          { Binop($1, Or, $3) }
     | OPOZIT expr           { Unop(Not, $2) }
+    | functcall             { Functcall($1) }
 
 typ:
     | INTEGR { Int }
@@ -98,12 +88,20 @@ vdecl:
     | I HAS A VARBL IDENT TEH typ { ($7, $5) }
 
 stmt_list:
-    | /* nothing */ { [] }
+    | /* nothing */  { [] }
     | stmt stmt_list { $1::$2 }
 
 stmt:
     | vdecl ITZ expr NEWLINE { BindAssign($1, $3) }
     | IDENT ITZ expr NEWLINE { Assign($1, $3) }
-    | vdecl NEWLINE       { Bind $1 }
-    | expr NEWLINE        { Expr $1 }
-    | GIVEZ expr NEWLINE  { Return $2 }
+    | vdecl NEWLINE          { Bind($1) }
+    | expr NEWLINE           { Expr($1) }
+    | GIVEZ expr NEWLINE     { Return($2) }
+
+functcall:
+    | IDENT WIT functcall_args KTHX { ($1, $3) }
+
+functcall_args:
+    | /* nothing */              { [] }
+    | expr                       { [$1] }
+    | expr AN WIT functcall_args { $1::$4 }
