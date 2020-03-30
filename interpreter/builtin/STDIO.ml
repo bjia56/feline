@@ -1,3 +1,4 @@
+open InterpreterTypes
 open Utils
 
 let meow (args: fValue list) : fValue =
@@ -13,6 +14,10 @@ let nom (args: fValue list) : fValue =
     let s = read_line () in
     FelineString(s)
 
-let exported = FelineFuncMap.empty
-let exported = FelineFuncMap.add "MEOW" meow exported
-let exported = FelineFuncMap.add "NOM" nom exported
+let exported_funcs = FelineFuncMap.empty
+let exported_funcs = FelineFuncMap.add "MEOW" meow exported_funcs
+let exported_funcs = FelineFuncMap.add "NOM" nom exported_funcs
+
+let exported_classes = FelineClassMap.empty
+
+let exported_module = (exported_funcs, exported_classes)
