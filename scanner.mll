@@ -1,6 +1,7 @@
 { open Parser }
 
 rule token =
+
     parse [' ' '\t']                  { token lexbuf }
     | ['\n' '\r']+                         { NEWLINE }
     | '?'                                  { QUESTION }
@@ -16,6 +17,7 @@ rule token =
     | "ME"                                 { ME }
     | "TEH"                                { TEH }
     | "FUNC"                               { FUNC }
+    | "MEOW"						       {MEOW}
     | "WIT"                                { WIT }
     | "KTHXBAI"                            { KTHXBAI }
     | "PLUZ"                               { PLUZ }
@@ -36,4 +38,5 @@ rule token =
     | "\"([^\"\\\\]|\\\\.)*\"" as str      { STRIN (str) }
     | ['a'-'z' 'A'-'Z' '_']
       ['a'-'z' 'A'-'Z' '_' '0'-'9']* as id { IDENT(id) }
+    | '"'							  {QUOTATION}    
     | eof                                  { EOF }
