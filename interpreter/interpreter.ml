@@ -67,6 +67,11 @@ let rec eval_expr (g: global_context ref) (c: local_context ref) (e: expr) : fVa
             let res = not (bool_of_fValue e_val) in
             FelineBool(res)
     )
+    | Functcall(f) ->
+        let fname, fargs = f in
+        let farg_vals = List.map (eval_expr g c) fargs in
+        let func = FelineFuncMap.find fname !g.functions in
+        func farg_vals
 
 let eval_stmt (g: global_context ref) (c: local_context ref) (s: stmt) : fValue option =
     match s with
