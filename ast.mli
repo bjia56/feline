@@ -44,9 +44,18 @@ type func_decl = {
     body: stmt list;
 }
 
+type cons_decl = bind list * stmt list
+
+type des_decl = stmt list
+
 type class_decl = {
     cname: string;
-    (* incomplete *)
+    pubmembers: bind list;
+    privmembers: bind list;
+    pubfuncs: func_decl list;
+    privfuncs: func_decl list;
+    cons: cons_decl list; (* always public *)
+    des: des_decl list; (* always public *)
 }
 
 type program = {

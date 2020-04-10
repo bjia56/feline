@@ -7,6 +7,7 @@ rule token =
     parse [' ' '\t']                       { token lexbuf }
     | ['\n' '\r']+                         { NEWLINE }
     | '?'                                  { QUESTION }
+    | ':'                                  { COLON }
     | "I"                                  { I }
     | "HAS"                                { HAS }
     | "A"                                  { A }
@@ -19,8 +20,12 @@ rule token =
     | "ME"                                 { ME }
     | "TEH"                                { TEH }
     | "FUNC"                               { FUNC }
+    | "CONS"                               { CONS }
+    | "DES"                                { DES }
     | "WIT"                                { WIT }
     | "KTHXBAI"                            { KTHXBAI }
+    | "EVRYONE"                            { EVRYONE }
+    | "MESELF"                             { MESELF }
     | "KTHX"                               { KTHX }
     | "PLUZ"                               { PLUZ }
     | "MYNUZ"                              { MYNUZ }
