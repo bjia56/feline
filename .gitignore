@@ -27,3 +27,8 @@ setup.log
 
 # Local OPAM switch
 _opam/
+
+# Verbose ocamlyacc files
+parser.ml
+parser.mli
+parser.output
