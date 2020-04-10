@@ -126,18 +126,6 @@ class_decl:
         }
 
 class_internals:
-    | class_pub_internals class_internals
-        {
-            {
-                cname="";
-                pubmembers=concat_lists $1.pubmembers $2.pubmembers;
-                privmembers=$2.privmembers;
-                pubfuncs=concat_lists $1.pubfuncs $2.pubfuncs;
-                privfuncs=$2.privfuncs;
-                cons=concat_lists $1.cons $2.cons;
-                des=concat_lists $1.des $2.des;
-            }
-        }
     | EVRYONE COLON NEWLINE class_pub_internals class_internals
         {
             {
