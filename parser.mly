@@ -4,14 +4,15 @@ open ParserUtils
 %}
 
 %token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS DIS CONS DES WIT KTHXBAI KTHX QUESTION COLON EVRYONE MESELF NEWLINE
+%token INTEGR STRIN
 %token NOT_SAYM_AZ SAYM_AZ
 %token BIGGR_THAN SMALLR_THAN
 %token PLUZ MYNUZ TYMEZ DIVYD
 %token AN OR OPOZIT
 %token <string> IDENT
-%token <int> INTEGR
+%token <int> INTLIT
 %token <bool> BLIT
-%token <string> STRIN
+%token <string> STRLIT
 %token EOF
 
 %start program
@@ -35,9 +36,9 @@ decls:
     | NEWLINE decls            { $2 }
 
 expr:
-    | INTEGR                { IntLit($1) }
+    | INTLIT                { IntLit($1) }
     | BLIT                  { BoolLit($1) }
-    | STRIN                 { StrLit($1) }
+    | STRLIT                { StrLit($1) }
     | IDENT                 { Ident($1) }
     | expr PLUZ expr        { Binop($1, Add, $3) }
     | expr MYNUZ expr       { Binop($1, Sub, $3) }

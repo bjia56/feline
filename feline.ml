@@ -83,17 +83,11 @@ let _ =
     let () = Arg.parse speclist (fun x -> ()) usage in
 
     if !testcases then
-        let () = Printexc.record_backtrace true in
-        try (
-            ParserTests.run_tests ()
-        ) with
-        | _ -> Printexc.print_backtrace stderr
+        ParserTests.run_tests ()
     else
-        let () = Printexc.record_backtrace true in
         let () = print_endline ("Compiling " ^ (string_of_int (List.length !files)) ^ " files...") in
         try (
             let asts = asts_of_file_list !files in
             print_parsed_modules asts
         ) with
         | ParserUtils.SyntaxError(e) -> print_endline e
-        | _ -> Printexc.print_backtrace stderr

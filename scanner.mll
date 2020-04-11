@@ -41,14 +41,16 @@ rule token =
     | "AN"                                 { AN }
     | "OR"                                 { OR }
     | "OPOZIT"                             { OPOZIT }
-    | ['0'-'9']+ as lit                    { INTEGR(int_of_string lit) }
+    | ['0'-'9']+ as lit                    { INTLIT(int_of_string lit) }
     | "YEZ"                                { BLIT(true)  }
     | "NO"                                 { BLIT(false) }
     | '"' (
         [^'"'] | "\\\"" |
         "\\\\" | "\\n" |
         "\\t"
-      )* '"' as str                        { STRIN(sanitize_str_lit str) }
+      )* '"' as str                        { STRLIT(sanitize_str_lit str) }
+    | "INTEGR"                             { INTEGR }
+    | "STRIN"                              { STRIN }
     | ['a'-'z' 'A'-'Z' '_']
       ['a'-'z' 'A'-'Z' '_' '0'-'9']* as id { IDENT(id) }
     | eof                                  { EOF }
