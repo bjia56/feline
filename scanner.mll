@@ -17,7 +17,7 @@ rule token =
     | "ME"                                 { ME }
     | "TEH"                                { TEH }
     | "FUNC"                               { FUNC }
-    | "MEOW"						       {MEOW}
+    | "MEOW"						       { MEOW }
     | "WIT"                                { WIT }
     | "KTHXBAI"                            { KTHXBAI }
     | "PLUZ"                               { PLUZ }
@@ -33,10 +33,11 @@ rule token =
     | "OR"                                 { OR }
     | "OPOZIT"                             { OPOZIT }
     | ['0'-'9']+ as lit                    { INTEGR(int_of_string lit) }
+    | "BUL"                                { BUL }
     | "YEZ"                                { BLIT(true)  }
     | "NO"                                 { BLIT(false) }
     | "\"([^\"\\\\]|\\\\.)*\"" as str      { STRIN (str) }
     | ['a'-'z' 'A'-'Z' '_']
       ['a'-'z' 'A'-'Z' '_' '0'-'9']* as id { IDENT(id) }
-    | '"'							  {QUOTATION}    
+    (*| '"'							       {QUOTATION}    *)
     | eof                                  { EOF }

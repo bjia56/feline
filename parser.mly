@@ -1,6 +1,6 @@
 %{ open Ast %}
 
-%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC WIT KTHXBAI QUESTION NEWLINE
+%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC MEOW WIT KTHXBAI QUESTION NEWLINE
 %token NOT_SAYM_AZ SAYM_AZ
 %token BIGGR_THAN SMALLR_THAN
 %token PLUZ MYNUZ TYMEZ DIVYD
@@ -9,6 +9,7 @@
 %token <int> INTEGR
 %token <bool> BLIT
 %token <string> STRIN
+%token BUL
 %token EOF
 
 %start program
@@ -27,19 +28,20 @@ program:
     | decls NEWLINE EOF { $1 }
 
 decls:
-    | /* nothing */   { { classes=[]; functions=[] } }
-    | func_decl decls { { classes=$2.classes; functions=$1::$2.functions } }
+    | /* nothing */     { { classes=[]; functions=[]; globals=[] } }
+    | func_decl decls   { { classes=$2.classes; functions=$1::$2.functions; globals=$2.globals } }
+    | glob_vdecl decls  { { classes=$2.classes; functions=$2.functions; globals=$1::$2.globals } }
 
-FUNCTCALL:
+/*FUNCTCALL:
 	| MEOW WIT args
 
 args:
 	| expr
 	| expr args
  
-STRLIT:
+  STRLIT:
 	| QUOTATION  QUOTATION
-	| QUOTATION id QUOTATION
+	| QUOTATION id QUOTATION*/
   
 expr:
     | INTEGR                { IntLit($1) }
@@ -62,6 +64,7 @@ typ:
     | INTEGR { Int }
     | STRIN  { String }
     | IDENT  { TypIdent($1) }
+    | BUL    { Bool }
 
 func_decl:
     | HAI ME TEH typ FUNC IDENT formals_opt NEWLINE stmt_list KTHXBAI
@@ -94,7 +97,10 @@ formals_list:
 formal:
     | IDENT TEH typ { ($3, $1) }
 
-vdecl:
+glob_vdecl:
+    | HAI ME TEH VARBL IDENT TEH typ { ($7, $5) }
+
+loc_vdecl:
     | I HAS A VARBL IDENT TEH typ { ($7, $5) }
 
 stmt_list:
@@ -102,8 +108,8 @@ stmt_list:
     | stmt stmt_list { $1::$2 }
 
 stmt:
-    | vdecl ITZ expr NEWLINE { BindAssign($1, $3) }
+    | loc_vdecl ITZ expr NEWLINE { BindAssign($1, $3) }
     | IDENT ITZ expr NEWLINE { Assign($1, $3) }
-    | vdecl NEWLINE       { Bind $1 }
+    | loc_vdecl NEWLINE       { Bind $1 }
     | expr NEWLINE        { Expr $1 }
     | GIVEZ expr NEWLINE  { Return $2 }
