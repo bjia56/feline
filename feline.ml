@@ -1,5 +1,9 @@
 let ast_of_chan chan =
-    Parser.program Scanner.token (Lexing.from_channel chan)
+    let lexbuf = Lexing.from_channel chan in
+    try (
+        Parser.program Scanner.token lexbuf
+    ) with
+    | Parsing.Parse_error -> raise (ParserUtils.SyntaxError (ParserUtils.syntax_error_string lexbuf))
 
 let ast_of_file file_name =
     let file_chan = open_in file_name in
@@ -91,4 +95,5 @@ let _ =
             let asts = asts_of_file_list !files in
             print_parsed_modules asts
         ) with
+        | ParserUtils.SyntaxError(e) -> print_endline e
         | _ -> Printexc.print_backtrace stderr
