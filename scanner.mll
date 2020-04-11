@@ -21,6 +21,7 @@ rule token =
     | "TEH"                                { TEH }
     | "FUNC"                               { FUNC }
     | "CONS"                               { CONS }
+    | "DIS"                                { DIS }
     | "DES"                                { DES }
     | "WIT"                                { WIT }
     | "KTHXBAI"                            { KTHXBAI }

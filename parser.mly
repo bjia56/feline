@@ -3,7 +3,7 @@ open Ast
 open ParserUtils
 %}
 
-%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS CONS DES WIT KTHXBAI KTHX QUESTION COLON EVRYONE MESELF NEWLINE
+%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS DIS CONS DES WIT KTHXBAI KTHX QUESTION COLON EVRYONE MESELF NEWLINE
 %token NOT_SAYM_AZ SAYM_AZ
 %token BIGGR_THAN SMALLR_THAN
 %token PLUZ MYNUZ TYMEZ DIVYD
@@ -266,14 +266,31 @@ class_pub_internals:
         }
 
 class_func_decl:
-    | func_decl { $1 }
+    | DIS TEH typ FUNC IDENT formals_opt NEWLINE stmt_list KTHXBAI
+        {
+            {
+                rtyp=$3;
+                fname=$5;
+                formals=$6;
+                body=$8;
+            }
+        }
+    | DIS TEH FUNC IDENT formals_opt NEWLINE stmt_list KTHXBAI
+        {
+            {
+                rtyp=Null;
+                fname=$4;
+                formals=$5;
+                body=$7;
+            }
+        }
 
 class_vdecl:
-    | HAI ME TEH typ VARBL IDENT { ($4, $6) }
+    | DIS TEH VARBL IDENT TEH typ { ($6, $4) }
 
 cons_decl:
-    | HAI ME TEH CONS formals_opt NEWLINE stmt_list KTHXBAI { ($5, $7) }
+    | DIS TEH CONS formals_opt NEWLINE stmt_list KTHXBAI { ($4, $6) }
 
 des_decl:
-    | HAI ME TEH DES NEWLINE stmt_list KTHXBAI { $6 }
+    | DIS TEH DES NEWLINE stmt_list KTHXBAI { $5 }
 
