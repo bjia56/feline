@@ -20,6 +20,7 @@ rule token =
     | "ME"                                 { ME }
     | "TEH"                                { TEH }
     | "FUNC"                               { FUNC }
+    | "CLAS"                               { CLAS }
     | "CONS"                               { CONS }
     | "DIS"                                { DIS }
     | "DES"                                { DES }
