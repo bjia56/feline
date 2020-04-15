@@ -3,8 +3,8 @@ open Ast
 open ParserUtils
 %}
 
-%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS DIS CONS DES WIT KTHXBAI KTHX QUESTION COLON EVRYONE MESELF NEWLINE
-%token INTEGR STRIN
+%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS DIS CONS DES WIT MEOW KTHXBAI KTHX QUESTION COLON EVRYONE MESELF NEWLINE
+%token INTEGR STRIN BUL
 %token NOT_SAYM_AZ SAYM_AZ
 %token BIGGR_THAN SMALLR_THAN
 %token PLUZ MYNUZ TYMEZ DIVYD
@@ -31,10 +31,22 @@ program:
 
 decls:
     | /* nothing */            { { classes=[]; functions=[] } }
-    | func_decl NEWLINE decls  { { classes=$3.classes; functions=$1::$3.functions } }
-    | class_decl NEWLINE decls { { classes=$1::$3.classes; functions=$3.functions } }
+    | func_decl NEWLINE decls  { { classes=$3.classes; functions=$1::$3.functions; globals=$3.globals } }
+    | glob_vdecl NEWLINE decls { { classes=$3.classes; functions=$3.functions; globals=$1::$3.globals } }
+    | class_decl NEWLINE decls { { classes=$1::$3.classes; functions=$3.functions; globals=$3.globals } }
     | NEWLINE decls            { $2 }
 
+  /*FUNCTCALL:
+    | MEOW WIT args
+
+  args:
+    | expr
+    | expr args
+
+    STRLIT:
+    | QUOTATION  QUOTATION
+    | QUOTATION id QUOTATION*/
+  
 expr:
     | INTLIT                { IntLit($1) }
     | BLIT                  { BoolLit($1) }
@@ -57,6 +69,7 @@ typ:
     | INTEGR { Int }
     | STRIN  { String }
     | IDENT  { TypIdent($1) }
+    | BUL    { Bool }
 
 func_decl:
     | HAI ME TEH typ FUNC IDENT formals_opt NEWLINE stmt_list KTHXBAI
@@ -89,7 +102,10 @@ formals_list:
 formal:
     | IDENT TEH typ { ($3, $1) }
 
-vdecl:
+glob_vdecl:
+    | HAI ME TEH VARBL IDENT TEH typ { ($7, $5) }
+
+loc_vdecl:
     | I HAS A VARBL IDENT TEH typ { ($7, $5) }
 
 stmt_list:
@@ -98,11 +114,11 @@ stmt_list:
     | NEWLINE stmt_list { $2 }
 
 stmt:
-    | vdecl ITZ expr NEWLINE { BindAssign($1, $3) }
-    | IDENT ITZ expr NEWLINE { Assign($1, $3) }
-    | vdecl NEWLINE          { Bind($1) }
-    | expr NEWLINE           { Expr($1) }
-    | GIVEZ expr NEWLINE     { Return($2) }
+    | loc_vdecl ITZ expr NEWLINE { BindAssign($1, $3) }
+    | IDENT ITZ expr NEWLINE     { Assign($1, $3) }
+    | loc_vdecl NEWLINE          { Bind($1) }
+    | expr NEWLINE               { Expr($1) }
+    | GIVEZ expr NEWLINE         { Return($2) }
 
 functcall:
     | IDENT WIT functcall_args KTHX { ($1, $3) }
@@ -294,4 +310,3 @@ cons_decl:
 
 des_decl:
     | DIS TEH DES NEWLINE stmt_list KTHXBAI { $5 }
-

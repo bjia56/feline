@@ -1,7 +1,13 @@
+(* Abstract Syntax Tree for Feline *)
+
 type typ =
+    | Void
     | Null
     | Int
     | String
+    | Bool
+   (* | Array of typ * int  *) (* TODO: Implement Arrays *)
+    | Exception of string
     | TypIdent of string
 
 type binop =
@@ -61,4 +67,5 @@ type class_decl = {
 type program = {
     classes: class_decl list;
     functions: func_decl list;
+    globals: bind list;
 }

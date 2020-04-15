@@ -20,6 +20,7 @@ rule token =
     | "ME"                                 { ME }
     | "TEH"                                { TEH }
     | "FUNC"                               { FUNC }
+    | "MEOW"                               { MEOW }
     | "CLAS"                               { CLAS }
     | "CONS"                               { CONS }
     | "DIS"                                { DIS }
@@ -51,6 +52,8 @@ rule token =
       )* '"' as str                        { STRLIT(sanitize_str_lit str) }
     | "INTEGR"                             { INTEGR }
     | "STRIN"                              { STRIN }
+    | "BUL"                                { BUL }
     | ['a'-'z' 'A'-'Z' '_']
       ['a'-'z' 'A'-'Z' '_' '0'-'9']* as id { IDENT(id) }
+    (*| '"'							                   {QUOTATION}    *)
     | eof                                  { EOF }
