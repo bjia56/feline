@@ -1,15 +1,18 @@
-%{ open Ast %}
+%{
+open Ast
+open ParserUtils
+%}
 
-%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC MEOW WIT KTHXBAI QUESTION NEWLINE
+%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS DIS CONS DES WIT MEOW KTHXBAI KTHX QUESTION COLON EVRYONE MESELF NEWLINE
+%token INTEGR STRIN BUL
 %token NOT_SAYM_AZ SAYM_AZ
 %token BIGGR_THAN SMALLR_THAN
 %token PLUZ MYNUZ TYMEZ DIVYD
 %token AN OR OPOZIT
 %token <string> IDENT
-%token <int> INTEGR
+%token <int> INTLIT
 %token <bool> BLIT
-%token <string> STRIN
-%token BUL
+%token <string> STRLIT
 %token EOF
 
 %start program
@@ -25,28 +28,29 @@
 
 program:
     | decls EOF         { $1 }
-    | decls NEWLINE EOF { $1 }
 
 decls:
-    | /* nothing */     { { classes=[]; functions=[]; globals=[] } }
-    | func_decl decls   { { classes=$2.classes; functions=$1::$2.functions; globals=$2.globals } }
-    | glob_vdecl decls  { { classes=$2.classes; functions=$2.functions; globals=$1::$2.globals } }
+    | /* nothing */            { { classes=[]; functions=[] } }
+    | func_decl NEWLINE decls  { { classes=$3.classes; functions=$1::$3.functions; globals=$3.globals } }
+    | glob_vdecl NEWLINE decls { { classes=$3.classes; functions=$3.functions; globals=$1::$3.globals } }
+    | class_decl NEWLINE decls { { classes=$1::$3.classes; functions=$3.functions; globals=$3.globals } }
+    | NEWLINE decls            { $2 }
 
-/*FUNCTCALL:
-	| MEOW WIT args
+  /*FUNCTCALL:
+    | MEOW WIT args
 
-args:
-	| expr
-	| expr args
- 
-  STRLIT:
-	| QUOTATION  QUOTATION
-	| QUOTATION id QUOTATION*/
+  args:
+    | expr
+    | expr args
+
+    STRLIT:
+    | QUOTATION  QUOTATION
+    | QUOTATION id QUOTATION*/
   
 expr:
-    | INTEGR                { IntLit($1) }
+    | INTLIT                { IntLit($1) }
     | BLIT                  { BoolLit($1) }
-    | STRIN                 { StrLit($1) }
+    | STRLIT                { StrLit($1) }
     | IDENT                 { Ident($1) }
     | expr PLUZ expr        { Binop($1, Add, $3) }
     | expr MYNUZ expr       { Binop($1, Sub, $3) }
@@ -59,6 +63,7 @@ expr:
     | expr AN expr          { Binop($1, And, $3) }
     | expr OR expr          { Binop($1, Or, $3) }
     | OPOZIT expr           { Unop(Not, $2) }
+    | functcall             { Functcall($1) }
 
 typ:
     | INTEGR { Int }
@@ -104,12 +109,204 @@ loc_vdecl:
     | I HAS A VARBL IDENT TEH typ { ($7, $5) }
 
 stmt_list:
-    | /* nothing */ { [] }
-    | stmt stmt_list { $1::$2 }
+    | /* nothing */     { [] }
+    | stmt stmt_list    { $1::$2 }
+    | NEWLINE stmt_list { $2 }
 
 stmt:
     | loc_vdecl ITZ expr NEWLINE { BindAssign($1, $3) }
-    | IDENT ITZ expr NEWLINE { Assign($1, $3) }
-    | loc_vdecl NEWLINE       { Bind $1 }
-    | expr NEWLINE        { Expr $1 }
-    | GIVEZ expr NEWLINE  { Return $2 }
+    | IDENT ITZ expr NEWLINE     { Assign($1, $3) }
+    | loc_vdecl NEWLINE          { Bind($1) }
+    | expr NEWLINE               { Expr($1) }
+    | GIVEZ expr NEWLINE         { Return($2) }
+
+functcall:
+    | IDENT WIT functcall_args KTHX { ($1, $3) }
+
+functcall_args:
+    | /* nothing */              { [] }
+    | expr                       { [$1] }
+    | expr AN WIT functcall_args { $1::$4 }
+
+class_decl:
+    | HAI ME TEH CLAS IDENT NEWLINE class_internals KTHXBAI
+        {
+            {
+                cname=$5;
+                pubmembers=$7.pubmembers;
+                privmembers=$7.privmembers;
+                pubfuncs=$7.pubfuncs;
+                privfuncs=$7.privfuncs;
+                cons=$7.cons;
+                des=$7.des;
+            }
+        }
+
+class_internals:
+    | EVRYONE COLON NEWLINE class_pub_internals class_internals
+        {
+            {
+                cname="";
+                pubmembers=concat_lists $4.pubmembers $5.pubmembers;
+                privmembers=$5.privmembers;
+                pubfuncs=concat_lists $4.pubfuncs $5.pubfuncs;
+                privfuncs=$5.privfuncs;
+                cons=concat_lists $4.cons $5.cons;
+                des=concat_lists $4.des $5.des;
+            }
+        }
+    | MESELF COLON NEWLINE class_priv_internals class_internals
+        {
+            {
+                cname="";
+                pubmembers=$5.pubmembers;
+                privmembers=concat_lists $4.privmembers $5.privmembers;
+                pubfuncs=$5.pubfuncs;
+                privfuncs=concat_lists $4.privfuncs $5.privfuncs;
+                cons=$5.cons;
+                des=$5.des;
+            }
+        }
+    | /* nothing */
+        {
+            {
+                cname="";
+                pubmembers=[];
+                privmembers=[];
+                pubfuncs=[];
+                privfuncs=[];
+                cons=[];
+                des=[];
+            }
+        }
+
+class_priv_internals:
+    | NEWLINE class_priv_internals { $2 }
+    | class_func_decl NEWLINE class_priv_internals
+        {
+            {
+                cname="";
+                pubmembers=[];
+                privmembers=$3.privmembers;
+                pubfuncs=[];
+                privfuncs=$1::$3.privfuncs;
+                cons=[];
+                des=[];
+            }
+        }
+    | class_vdecl NEWLINE class_priv_internals
+        {
+            {
+                cname="";
+                pubmembers=[];
+                privmembers=$1::$3.privmembers;
+                pubfuncs=[];
+                privfuncs=$3.privfuncs;
+                cons=[];
+                des=[];
+            }
+        }
+    | /* nothing */
+        {
+            {
+                cname="";
+                pubmembers=[];
+                privmembers=[];
+                pubfuncs=[];
+                privfuncs=[];
+                cons=[];
+                des=[];
+            }
+        }
+
+class_pub_internals:
+    | NEWLINE class_pub_internals { $2 }
+    | class_func_decl NEWLINE class_pub_internals
+        {
+            {
+                cname="";
+                pubmembers=[];
+                privmembers=$3.privmembers;
+                pubfuncs=[];
+                privfuncs=$1::$3.privfuncs;
+                cons=[];
+                des=[];
+            }
+        }
+    | class_vdecl NEWLINE class_pub_internals
+        {
+            {
+                cname="";
+                pubmembers=$1::$3.pubmembers;
+                privmembers=[];
+                pubfuncs=$3.pubfuncs;
+                privfuncs=[];
+                cons=$3.cons;
+                des=$3.des;
+            }
+        }
+    | cons_decl NEWLINE class_pub_internals
+        {
+            {
+                cname="";
+                pubmembers=$3.pubmembers;
+                privmembers=[];
+                pubfuncs=$3.pubfuncs;
+                privfuncs=[];
+                cons=$1::$3.cons;
+                des=$3.des;
+            }
+        }
+    | des_decl NEWLINE class_pub_internals
+        {
+            {
+                cname="";
+                pubmembers=$3.pubmembers;
+                privmembers=[];
+                pubfuncs=$3.pubfuncs;
+                privfuncs=[];
+                cons=$3.cons;
+                des=$1::$3.des;
+            }
+        }
+    | /* nothing */
+        {
+            {
+                cname="";
+                pubmembers=[];
+                privmembers=[];
+                pubfuncs=[];
+                privfuncs=[];
+                cons=[];
+                des=[];
+            }
+        }
+
+class_func_decl:
+    | DIS TEH typ FUNC IDENT formals_opt NEWLINE stmt_list KTHXBAI
+        {
+            {
+                rtyp=$3;
+                fname=$5;
+                formals=$6;
+                body=$8;
+            }
+        }
+    | DIS TEH FUNC IDENT formals_opt NEWLINE stmt_list KTHXBAI
+        {
+            {
+                rtyp=Null;
+                fname=$4;
+                formals=$5;
+                body=$7;
+            }
+        }
+
+class_vdecl:
+    | DIS TEH VARBL IDENT TEH typ { ($6, $4) }
+
+cons_decl:
+    | DIS TEH CONS formals_opt NEWLINE stmt_list KTHXBAI { ($4, $6) }
+
+des_decl:
+    | DIS TEH DES NEWLINE stmt_list KTHXBAI { $5 }

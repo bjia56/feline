@@ -1,10 +1,13 @@
-{ open Parser }
+{
+open Parser
+open LexUtils
+}
 
 rule token =
-
-    parse [' ' '\t']                  { token lexbuf }
+    parse [' ' '\t']                       { token lexbuf }
     | ['\n' '\r']+                         { NEWLINE }
     | '?'                                  { QUESTION }
+    | ':'                                  { COLON }
     | "I"                                  { I }
     | "HAS"                                { HAS }
     | "A"                                  { A }
@@ -17,9 +20,16 @@ rule token =
     | "ME"                                 { ME }
     | "TEH"                                { TEH }
     | "FUNC"                               { FUNC }
-    | "MEOW"						       { MEOW }
+    | "MEOW"                               { MEOW }
+    | "CLAS"                               { CLAS }
+    | "CONS"                               { CONS }
+    | "DIS"                                { DIS }
+    | "DES"                                { DES }
     | "WIT"                                { WIT }
     | "KTHXBAI"                            { KTHXBAI }
+    | "EVRYONE"                            { EVRYONE }
+    | "MESELF"                             { MESELF }
+    | "KTHX"                               { KTHX }
     | "PLUZ"                               { PLUZ }
     | "MYNUZ"                              { MYNUZ }
     | "TYMEZ"                              { TYMEZ }
@@ -32,12 +42,18 @@ rule token =
     | "AN"                                 { AN }
     | "OR"                                 { OR }
     | "OPOZIT"                             { OPOZIT }
-    | ['0'-'9']+ as lit                    { INTEGR(int_of_string lit) }
-    | "BUL"                                { BUL }
+    | ['0'-'9']+ as lit                    { INTLIT(int_of_string lit) }
     | "YEZ"                                { BLIT(true)  }
     | "NO"                                 { BLIT(false) }
-    | "\"([^\"\\\\]|\\\\.)*\"" as str      { STRIN (str) }
+    | '"' (
+        [^'"'] | "\\\"" |
+        "\\\\" | "\\n" |
+        "\\t"
+      )* '"' as str                        { STRLIT(sanitize_str_lit str) }
+    | "INTEGR"                             { INTEGR }
+    | "STRIN"                              { STRIN }
+    | "BUL"                                { BUL }
     | ['a'-'z' 'A'-'Z' '_']
       ['a'-'z' 'A'-'Z' '_' '0'-'9']* as id { IDENT(id) }
-    (*| '"'							       {QUOTATION}    *)
+    (*| '"'							                   {QUOTATION}    *)
     | eof                                  { EOF }

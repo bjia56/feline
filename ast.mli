@@ -31,7 +31,8 @@ type expr =
     | Ident of string
     | Binop of expr * binop * expr
     | Unop of unop * expr
-    | Call of string * expr list
+    | Functcall of functcall
+and functcall = string * expr list
 
 type bind = typ * string
 
@@ -49,10 +50,18 @@ type func_decl = {
     body: stmt list;
 }
 
+type cons_decl = bind list * stmt list
+
+type des_decl = stmt list
+
 type class_decl = {
     cname: string;
-    cfunctions: func_decl list;
-    (* incomplete *)
+    pubmembers: bind list;
+    privmembers: bind list;
+    pubfuncs: func_decl list;
+    privfuncs: func_decl list;
+    cons: cons_decl list; (* always public *)
+    des: des_decl list; (* always public *)
 }
 
 type program = {
