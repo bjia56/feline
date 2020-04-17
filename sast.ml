@@ -11,6 +11,8 @@ and sx =
   | SBinop of sexpr * binop * sexpr
   | SUnop of unop * sexpr
   | SCall of string * sexpr list
+  | SFunctcall of sfunctcall
+and sfunctcall = string * sexpr list
 
  type sstmt = 
   | SExpr of expr
@@ -26,14 +28,23 @@ type sfunc_decl = {
     sbody: stmt list;
 }
 
+type scons_decl = bind list * sstmt list
+
+type sdes_decl = sstmt list
+
 type sclass_decl = {
 	scname: string;
-	scfunctions: func_decl list;
+  spubmembers: bind list;
+  sprivmembers: bind list;
+  spubfuncs: sfunc_decl list;
+  sprivfuncs: sfunc_decl list;
+  scons: scons_decl list;
+  sdes: sdes_decl list;
 }
 
-type program = {
-    sclasses: class_decl list;
-    sfunctions: func_decl list;
+type sprogram = {
+    sclasses: sclass_decl list;
+    sfunctions: sfunc_decl list;
     sglobals: bind list;
 }
 

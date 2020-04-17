@@ -5,21 +5,13 @@ open Sast
 
 module StringMap = Map.Make(String)
 
-(* Pretty printing functions *)
-let string_of_typ = function
-      Void -> "void"
-    | Null -> "null"
-    | Int -> "int"
-    | String -> "string"
-    | Exception of string -> "exception"
-    | TypIdent of string -> "custom type"
 
 (* Semantic checking of AST. Returns SAST if successful, otherwise
    throws an exception.
 
-   Check each global variable, then check classes, then check each function *)
+   Check each global variable, then check functions, then check classes *)
 
-let check (globals, classes, functions) =
+let check (classes, functions, globals) =
 
 	(* Verify a list of bindings has no duplicate names *)
 	let check_binds (kind : string) (binds : (typ * string) list) =
@@ -33,8 +25,6 @@ let check (globals, classes, functions) =
 
     (* Check that no globals are duplicate *)
     check_binds "global" globals;
-
-    (* TODO: Add check function for classes *)
 
     (* Collect function declarations for built-in functions: no bodies *)
     let built_in_decls = 
@@ -75,6 +65,7 @@ let check (globals, classes, functions) =
 	let check_func func = 
 		(* Make sure no formals or locals are void or duplicates *)
 		check_binds "formal" func.formals;
+		let locals = [] in
 
 		(* TODO: need to find out how to obtain local variables from function body *)
 		(* check_binds "local" (* add locals here *) *)
@@ -86,8 +77,8 @@ let check (globals, classes, functions) =
 		in
 
 		(* Build local symbol table of variables for this function *)
-		let symbols = List.fold_left (fun m (ty, name) -> StringMapp.add name ty m)
-			StringMap.empty (globals @ func.formals @ (* add locals here *))
+		let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
+			StringMap.empty (globals @ func.formals (* @ add locals here *))
 
 		(* Return a variable from our local symbol table *)
 		let type_of_identifier s =
@@ -130,7 +121,7 @@ let check (globals, classes, functions) =
 			  | _ -> raise (Failure err)
 			 in
 			 (t, SUnop(op, (t1, e1')))
-		  | Call(fname, args) as call ->
+		  | Functcall(fname, args) as call ->
 		  	let fd = find_func fname in
 		  	let param_length = List.length fd.formals in
 		  	if List.length args != param_length then
@@ -142,7 +133,7 @@ let check (globals, classes, functions) =
 		  		   in (check_assign ft et err, e')
 		       in 
 		       let args' = List.map2 check_call fd.formals args
-		   	   in (fd.rtyp, SCall(fname, args'))
+		   	   in (fd.rtyp, SFunctcall(fname, args'))
 		in
 
 		let check_bool_expr e =
@@ -157,8 +148,21 @@ let check (globals, classes, functions) =
 		  | s :: sl -> check_stmt s :: check_stmt_list sl
 		(* Return a semantically-checked statement i.e. containing sexprs *)
 		and check_stmt = function
-		    Expr e -> SExpr (check_expr e)
-		    (* TODO: add cases for Bind and BindAssign *)
+		    Expr e -> SExpr(check_expr e)
+		   (* (* Warning!: This might not update the original symbol table 
+		   and local list *)
+		   | Bind b -> 
+			     let (ty, name) = b in
+			     let locals = locals @ [(ty, name)] in
+			     let symbols = StringMap.add name ty symbols in
+			     check_binds locals 
+		     in (ty, name)
+		   | BindAssign (b, e) ->
+		         let (ty, name) = b in
+		         let locals = locals @ [(ty, name)] in
+		         let symbols = StringMap.add name ty symbols in
+		         check_binds locals
+		     in (b, SAssign(name, e))  *)
 		   | Assign(var, e) as ex ->
 		   	 let lt = type_of_identifier var
 		   	 and (rt, e') = check_expr e in
@@ -178,8 +182,148 @@ let check (globals, classes, functions) =
 		  sformals = func.formals;
 		  sbody = check_stmt_list func.body}
 	    }
-	in
-	(globals, List.map check_func functions)
+
+	(* (* Check a class function *)
+	let check_class_func calling_class func = 
+
+		check_binds "formal" func.formals
+		let locals = [] in
+
+		(* Raise an exception if the given rvalue type cannot be assigned to 
+		   the given lvalue type *)
+		let check_assign lvaluet rvaluet make_err = 
+		  if lvaluet = rvaluet then lvaluet else raise (Failure err)
+		in
+
+		(* Build local symbol table of variables for this function *)
+		let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
+			StringMap.empty (globals @ calling_class.pubmembers
+							 @ calling_class.privmembers
+							 @ func.formals (* @ add locals here *))
+
+		(* Return a variable from our local symbol table *)
+		let type_of_identifier s =
+		  try StringMap.find s symbols
+		  with Not_found -> raise (Failure ("undeclared identifier" ^ s))
+		in
+
+		(* Return a semantically-checked expression (sexpr) , i.e. with a type *)
+		let rec check_expr = function
+		    Literal l -> (Int, SIntLit l)
+		  | BoolLit l -> (Bool, SBoolLit l)
+		  | StrLit  l -> (String, SStrLit l)
+		  | Ident var -> (type_of_identifier var, SIdent var)
+		  | Binop(e1, op, e2) as e ->
+		    let (t1, e1') = check_expr e1
+		    and (t2, e2') = check_expr e2 in
+		    (* TODO: Make error more specific with pretty-printing functions *)
+		    let err = "illegal binary operator " 
+		  	in 
+		  	(* All binary operators require operands of the same type *)
+		  	if t1 = t2 then
+		  	   (* Determine expression type based on operator and operator types *)
+		  	   let t = match op with
+		  	       Add | Sub | Mul | Div when t1 = Int -> Int
+		  	     | Eq | Neq -> Bool
+		  	     | Less when t1 = Int -> Bool
+		  	     | And | Or when t1 = Bool -> Bool
+		  	     | _ -> raise (Failure err)
+		  	    in
+		  	    (t, SBinop((t1, e1'), op, (t2, e2')))
+		  	else raise (Failure err)
+		  | Unop(op, e1) as e ->
+		  	let (t1, e1') = check_expr e1 in
+		  	 (* TODO: Make error more specific with pretty-printing functions *)
+		    let err = "illegal unary operator " 
+			in
+			(* Single unary operator must be not *)
+			let t = match op with
+			  | Not -> Bool
+			  | _ -> raise (Failure err)
+			 in
+			 (t, SUnop(op, (t1, e1')))
+		  | Functcall(fname, args) as call ->
+		  	let fd = find_func fname in
+		  	let param_length = List.length fd.formals in
+		  	if List.length args != param_length then
+		  		raise (Failure ("expecting " ^ string_of_int param_length ^
+		  						" arguments in function call"))
+		  	else let check_call (ft, _) e =
+		  		   let (et, e') = check_expr e in
+		  		   let err = "illegal argument found in function call"
+		  		   in (check_assign ft et err, e')
+		       in 
+		       let args' = List.map2 check_call fd.formals args
+		   	   in (fd.rtyp, SFunctcall(fname, args'))
+		in
+
+		let check_bool_expr e =
+		  let (t, e') = check_expr e in
+		  match t with
+		  | Bool -> (t, e')
+		  | _ -> raise (Failure ("expected Boolean expression"))
+		in
+
+		let rec check_stmt_list = function
+		    [] -> []
+		  | s :: sl -> check_stmt s :: check_stmt_list sl
+		(* Return a semantically-checked statement i.e. containing sexprs *)
+		and check_stmt = function
+		    Expr e -> SExpr(check_expr e)
+		   (* (* Warning!: This might not update the original symbol table 
+		   and local list *)
+		   | Bind b -> 
+			     let (ty, name) = b in
+			     let locals = locals @ [(ty, name)] in
+			     let symbols = StringMap.add name ty symbols in
+			     check_binds locals 
+		     in (ty, name)
+		   | BindAssign (b, e) ->
+		         let (ty, name) = b in
+		         let locals = locals @ [(ty, name)] in
+		         let symbols = StringMap.add name ty symbols in
+		         check_binds locals
+		     in (b, SAssign(name, e))  *)
+		   | Assign(var, e) as ex ->
+		   	 let lt = type_of_identifier var
+		   	 and (rt, e') = check_expr e in
+		   	 let err = "illegal assignment in expression"
+		   	in 
+		   	let x = (check_assign lt rt err, SAssign(var, (rt, e')))
+		   	in (var, x)
+		   | Return e ->
+		     let (t, e') = check_expr e in 
+		     if t = func.rtyp then SReturn (t, e')
+		     else raise (
+		     	Failure ("return gives incorrect type")
+		     ) 
+		in (* body of check_func *)
+		{ srtyp = func.rtyp;
+		  sfname = func.fname;
+		  sformals = func.formals;
+		  sbody = check_stmt_list func.body}
+	    }
+
+	(* TODO: Check class constructor and destructor *)
+
+	let check_cons cons = 
+
+	let check_des des = 
+
+	(* TODO: Check a class *)
+	let check_class class = 
+
+		(* Make sure no public or private members are void or duplicates *)
+		let () = check_binds "public_members" class.pubmembers in
+		let () = check_binds "private_members" class.privmembers in 
+
+		(* Check all class functions *)
+		List.map check_class_func class.pubfuncs; 
+		List.map check_class_func class.privfuncs *)
+   
+
+in
+(List.map check_class classes, List.map check_func functions, globals)
 
 
 

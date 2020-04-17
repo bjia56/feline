@@ -30,7 +30,7 @@ program:
     | decls EOF         { $1 }
 
 decls:
-    | /* nothing */            { { classes=[]; functions=[] } }
+    | /* nothing */            { { classes=[]; functions=[]; globals=[] } }
     | func_decl NEWLINE decls  { { classes=$3.classes; functions=$1::$3.functions; globals=$3.globals } }
     | glob_vdecl NEWLINE decls { { classes=$3.classes; functions=$3.functions; globals=$1::$3.globals } }
     | class_decl NEWLINE decls { { classes=$1::$3.classes; functions=$3.functions; globals=$3.globals } }

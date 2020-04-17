@@ -69,3 +69,13 @@ type program = {
     functions: func_decl list;
     globals: bind list;
 }
+
+(* Pretty printing functions *)
+(* let string_of_typ = function
+      Void -> "void"
+    | Null -> "null"
+    | Int -> "int"
+    | String -> "string"
+    | Bool -> "bool"
+    | Exception of string -> "exception"
+    | TypIdent of string -> "custom type" *)
