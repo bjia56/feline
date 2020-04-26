@@ -2,33 +2,37 @@
 
 open Ast
 
-type sexpr = type * sx
+type sexpr = typ * sx
 and sx = 
-	SIntLit of int
+  | SNullLit of unit
+	| SIntLit of int
   | SBoolLit of bool
   | SStrLit of string
   | SIdent of string
   | SBinop of sexpr * binop * sexpr
   | SUnop of unop * sexpr
-  | SCall of string * sexpr list
   | SFunctcall of sfunctcall
+  | SClassFunctcall of string * sfunctcall
+  | SClassMemAccess of string * string
 and sfunctcall = string * sexpr list
 
  type sstmt = 
-  | SExpr of expr
-  | SReturn of expr
+  | SExpr of sexpr
+  | SReturn of sexpr
   | SBind of bind
-  | SBindAssign of bind * expr
-  | SAssign of string * expr
+  | SBindAssign of bind * sexpr
+  | SAssign of string * sexpr
+  | SClassMemRassn of string * string * sexpr
+  | SInstance of bind
 
 type sfunc_decl = {
     srtyp: typ;
     sfname: string;
     sformals: bind list;
-    sbody: stmt list;
+    sbody: sstmt list;
 }
 
-type scons_decl = bind list * sstmt list
+type scons_decl = sstmt list
 
 type sdes_decl = sstmt list
 

@@ -25,6 +25,7 @@ type binop =
 type unop = Not
 
 type expr =
+    | NullLit of unit
     | IntLit of int
     | BoolLit of bool
     | StrLit of string
@@ -32,7 +33,10 @@ type expr =
     | Binop of expr * binop * expr
     | Unop of unop * expr
     | Functcall of functcall
+    | ClassFunctcall of string * functcall
+    | ClassMemAccess of string * string
 and functcall = string * expr list
+   
 
 type bind = typ * string
 
@@ -42,6 +46,8 @@ type stmt =
     | Bind of bind
     | BindAssign of bind * expr
     | Assign of string * expr
+    | ClassMemRassn of string * string * expr
+    | Instance of bind
 
 type func_decl = {
     rtyp: typ;
@@ -50,7 +56,7 @@ type func_decl = {
     body: stmt list;
 }
 
-type cons_decl = bind list * stmt list
+type cons_decl = stmt list
 
 type des_decl = stmt list
 

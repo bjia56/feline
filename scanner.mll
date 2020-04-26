@@ -13,6 +13,7 @@ rule token =
     | "A"                                  { A }
     | "VARBL"                              { VARBL }
     | "ITZ"                                { ITZ }
+    | "NU"                                 { NU  }
     | "GIVEZ"                              { GIVEZ }
     | "PLS"                                { PLS }
     | "GIV"                                { GIV }
@@ -26,6 +27,7 @@ rule token =
     | "DIS"                                { DIS }
     | "DES"                                { DES }
     | "WIT"                                { WIT }
+    | "IN"                                 { IN }
     | "KTHXBAI"                            { KTHXBAI }
     | "EVRYONE"                            { EVRYONE }
     | "MESELF"                             { MESELF }

@@ -3,8 +3,8 @@ open Ast
 open ParserUtils
 %}
 
-%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS DIS CONS DES WIT MEOW KTHXBAI KTHX QUESTION COLON EVRYONE MESELF NEWLINE
-%token INTEGR STRIN BUL
+%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS DIS NU CONS DES WIT IN MEOW KTHXBAI KTHX QUESTION COLON EVRYONE MESELF NEWLINE
+%token INTEGR STRIN BUL NOL 
 %token NOT_SAYM_AZ SAYM_AZ
 %token BIGGR_THAN SMALLR_THAN
 %token PLUZ MYNUZ TYMEZ DIVYD
@@ -64,12 +64,16 @@ expr:
     | expr OR expr          { Binop($1, Or, $3) }
     | OPOZIT expr           { Unop(Not, $2) }
     | functcall             { Functcall($1) }
+    | IDENT IN functcall    { ClassFunctcall($1, $3) }
+    | IDENT IN IDENT        { ClassMemAccess($1, $3) }
+    | IDENT IN DIS          { ClassMemAccess($1, "DIS")}
 
 typ:
     | INTEGR { Int }
     | STRIN  { String }
     | IDENT  { TypIdent($1) }
     | BUL    { Bool }
+    | NOL    { Null }
 
 func_decl:
     | HAI ME TEH typ FUNC IDENT formals_opt NEWLINE stmt_list KTHXBAI
@@ -108,20 +112,26 @@ glob_vdecl:
 loc_vdecl:
     | I HAS A VARBL IDENT TEH typ { ($7, $5) }
 
+obj_inst:
+    | I HAS A IDENT ITZ NU typ { ($7, $4) }
+
 stmt_list:
     | /* nothing */     { [] }
     | stmt stmt_list    { $1::$2 }
     | NEWLINE stmt_list { $2 }
 
 stmt:
-    | loc_vdecl ITZ expr NEWLINE { BindAssign($1, $3) }
-    | IDENT ITZ expr NEWLINE     { Assign($1, $3) }
-    | loc_vdecl NEWLINE          { Bind($1) }
-    | expr NEWLINE               { Expr($1) }
-    | GIVEZ expr NEWLINE         { Return($2) }
+    | loc_vdecl ITZ expr NEWLINE           { BindAssign($1, $3) }
+    | IDENT ITZ expr NEWLINE               { Assign($1, $3) }
+    | loc_vdecl NEWLINE                    { Bind($1) }
+    | expr NEWLINE                         { Expr($1) }
+    | GIVEZ expr NEWLINE                   { Return($2) }
+    | IDENT IN IDENT ITZ expr NEWLINE      { ClassMemRassn($1, $3, $5)}
+    | obj_inst NEWLINE                     { Instance($1)}
 
 functcall:
     | IDENT WIT functcall_args KTHX { ($1, $3) }
+    | DIS WIT functcall_args KTHX   { ("DIS", $3 )}
 
 functcall_args:
     | /* nothing */              { [] }
@@ -225,10 +235,10 @@ class_pub_internals:
         {
             {
                 cname="";
-                pubmembers=[];
-                privmembers=$3.privmembers;
-                pubfuncs=[];
-                privfuncs=$1::$3.privfuncs;
+                pubmembers=$3.pubmembers;
+                privmembers=[];
+                pubfuncs=$1::$3.pubfuncs;
+                privfuncs=[];
                 cons=[];
                 des=[];
             }
@@ -306,7 +316,7 @@ class_vdecl:
     | DIS TEH VARBL IDENT TEH typ { ($6, $4) }
 
 cons_decl:
-    | DIS TEH CONS formals_opt NEWLINE stmt_list KTHXBAI { ($4, $6) }
+    | DIS TEH CONS formals_opt NEWLINE stmt_list KTHXBAI { $6 }
 
 des_decl:
     | DIS TEH DES NEWLINE stmt_list KTHXBAI { $5 }
