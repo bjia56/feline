@@ -91,12 +91,8 @@ let check (classes, functions, globals) =
 			  | _ -> false
 			in
 		try List.find pred classd.pubfuncs 
-		with Not_found -> let l = List.map (fun f -> f.fname) classd.pubfuncs in 
-						  let zeroth = List.nth l 0 in
-						  raise (Failure ("can't find public function " ^ f 
-										   ^ " in class " ^ classd.cname (* ^ 
-										   " here's the list of functions in the class: "
-										   ^ zeroth*) ))
+		with Not_found -> raise (Failure ("can't find public function " ^ f 
+										   ^ " in class " ^ classd.cname  ))
 	in
 
 	(* Return a private function from a class *)
@@ -154,7 +150,7 @@ let check (classes, functions, globals) =
 		  | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
 		  | StrLit  l -> ((String, SStrLit l), sym_tbl)
 		  | Ident var -> ((type_of_identifier var sym_tbl, SIdent var), sym_tbl)
-		  | Binop(e1, op, e2) as e ->
+		  | Binop(e1, op, e2) ->
 		    let ((t1, e1'), sym_tbl) = check_expr e1 sym_tbl in
 		    let ((t2, e2'), sym_tbl) = check_expr e2 sym_tbl in
 		    (* TODO: Make error more specific with pretty-printing functions *)
@@ -172,14 +168,14 @@ let check (classes, functions, globals) =
 		  	    in
 		  	    ((t, SBinop((t1, e1'), op, (t2, e2'))), sym_tbl)
 		  	else raise (Failure err)
-		  | Unop(op, e1) as e ->
+		  | Unop(op, e1) ->
 		  	let ((t1, e1'), m1) = check_expr e1 sym_tbl in
 			(* Single unary operator must be not *)
 			let t = match op with
 			  | Not -> Bool
 			 in
 			 ((t, SUnop(op, (t1, e1'))), m1)
-		  | Functcall(fname, args) as call ->
+		  | Functcall(fname, args) ->
 		  	let fd = find_func fname in
 		  	let param_length = List.length fd.formals in
 		  	if List.length args != param_length then
@@ -218,18 +214,18 @@ let check (classes, functions, globals) =
 	   		(* Check that the object has been instantiated *)
 	   		let instance_type = type_of_identifier instance sym_tbl in
 	   		(* Check that mem name is a valid public member in class *)
-	   		let found_mem = find_pub_mem mem ((find_class (ud_type_to_str instance_type))) in
+	   		let _ = find_pub_mem mem ((find_class (ud_type_to_str instance_type))) in
 	   		(* Return format *)
 	   		(* (( typ, SClassMemAccess(string, string)), sym_tbl) *)
 	   		((instance_type, SClassMemAccess(mem, instance)), sym_tbl)	
 		in
-
+		(* 
 		let check_bool_expr e sym_tbl =
 		  let ((t, e'), m) = check_expr e sym_tbl in
 		  match t with
 		  | Bool -> (t, e')
 		  | _ -> raise (Failure ("expected Boolean expression"))
-		in
+		in *)
 
 		let rec check_stmt_list stmt_list locals symbols =
 		  match stmt_list with
@@ -353,7 +349,7 @@ let check (classes, functions, globals) =
 		  | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
 		  | StrLit  l -> ((String, SStrLit l), sym_tbl)
 		  | Ident var -> ((type_of_identifier var sym_tbl, SIdent var), sym_tbl)
-		  | Binop(e1, op, e2) as e ->
+		  | Binop(e1, op, e2) ->
 		    let ((t1, e1'), sym_tbl) = check_expr e1 sym_tbl in
 		    let ((t2, e2'), sym_tbl) = check_expr e2 sym_tbl in
 		    (* TODO: Make error more specific with pretty-printing functions *)
@@ -371,14 +367,14 @@ let check (classes, functions, globals) =
 		  	    in
 		  	    ((t, SBinop((t1, e1'), op, (t2, e2'))), sym_tbl)
 		  	else raise (Failure err)
-		  | Unop(op, e1) as e ->
+		  | Unop(op, e1) ->
 		  	let ((t1, e1'), m1) = check_expr e1 sym_tbl in
 			(* Single unary operator must be not *)
 			let t = match op with
 			  | Not -> Bool
 			 in
 			 ((t, SUnop(op, (t1, e1'))), m1)
-		  | Functcall(fname, args) as call ->
+		  | Functcall(fname, args) ->
 		  	let fd = find_func fname in
 		  	let param_length = List.length fd.formals in
 		  	if List.length args != param_length then
@@ -394,7 +390,7 @@ let check (classes, functions, globals) =
 		   	   ((fd.rtyp, SFunctcall(fname, args'')), sym_tbl)
 		   	(* TODO: Need to account for ClassFunctcall, ClassMemAccess *)
 		   | ClassFunctcall(fname, (instance, args)) ->
-		   		let err = "can't find public function " ^ fname in
+		   		let _ = "can't find public function " ^ fname in
 		   		let fd = 
 			   		if instance = "DIS" then
 			   		        (* Calling a function within the class *)	
@@ -427,7 +423,7 @@ let check (classes, functions, globals) =
 			       (* ( ( typ , SClassFunctcall( string, (string, sexpr list ) ) ), sym_tbl) *)
 				   ( ( fd.rtyp, SClassFunctcall (fname, (calling_class.cname, args''))), sym_tbl)
 		   | ClassMemAccess(mem, instance) ->
-		        let err = "can't find public member " ^ mem in
+		        let _ = "can't find public member " ^ mem in
 		   		let (found_mem, instance_type) = 
 		   			if instance = "DIS" then
 		   			         (* Invoking a member within the class *)
@@ -450,12 +446,12 @@ let check (classes, functions, globals) =
 
 		in
 
-		let check_bool_expr e sym_tbl=
+		(* let check_bool_expr e sym_tbl=
 		  let ((t, e'), m) = check_expr e sym_tbl in
 		  match t with
 		  | Bool -> (t, e')
 		  | _ -> raise (Failure ("expected Boolean expression"))
-		in
+		in *)
 
 		let rec check_stmt_list stmt_list locals symbols =
 		  match stmt_list with
@@ -494,7 +490,7 @@ let check (classes, functions, globals) =
 		     )
 		   (* TODO: Need to account for ClassMemRassn and Instance *)
 		   | ClassMemRassn(mem, instance, expr) ->
-		   	  let err = "can't find public member " ^ mem in
+		   	  let _ = "can't find public member " ^ mem in
 		      let (found_mem, instance_type) = 
 		      	if instance = "DIS" then
 		      	         (* Invoking a member within the class *)
