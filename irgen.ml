@@ -1,34 +1,41 @@
-module L = Llvm
-module A = Ast
 open Sast
+open Ast
+
+module L = Llvm
 
 module StringMap = Map.Make(String)
 
-exception Unimplemented
+exception Unimplemented of string
 
-let translate (p: program) (mod_name: string) =
+let translate (mod_name: string) (p: sprogram) =
     let context = L.global_context () in
     let the_module = L.create_module context mod_name in
 
-    (* Helper to convert A type to L type *)
-    let ltype_of_typ (t: A.typ) =
-        match t with
-        | A.Int -> L.i32_type context
-        | A.Bool -> L.i1_type context
-        | _ -> raise Unimplemented
+    (* Get types from the context *)
+    let i32_t = L.i32_type context
+    and i8_t = L.i8_type context
+    and i1_t = L.i1_type context
     in
 
-    let init_of_type (t: A.typ) =
+    (* Helper to convert A type to L type *)
+    let ltype_of_typ (t: Ast.typ) =
         match t with
-        | A.Int -> L.const_int (ltype_of_typ t) 0
-        | A.Bool -> L.const_int (ltype_of_typ t) 0
-        | _ -> raise Unimplemented
+        | Ast.Int -> i32_t
+        | Ast.Bool -> i1_t
+        | _ -> raise (Unimplemented "cannot convert unimplemented type")
+    in
+
+    let init_of_typ (t: Ast.typ) =
+        match t with
+        | Ast.Int -> L.const_int (ltype_of_typ t) 0
+        | Ast.Bool -> L.const_int (ltype_of_typ t) 0
+        | _ -> raise (Unimplemented "cannot init unimplemented type")
     in
 
     (* Construct global vars *)
     let global_vars : L.llvalue StringMap.t =
         let global_var m (t, n) =
-            let init = init_of_type t
+            let init = init_of_typ t
             in StringMap.add n (L.define_global n init the_module) m in
         List.fold_left global_var StringMap.empty p.sglobals in
 
@@ -39,13 +46,29 @@ let translate (p: program) (mod_name: string) =
         L.declare_function "printf" printf_t the_module in
 
     (* Construct global funcs *)
+    let main_fdecl = {
+        srtyp=Ast.Int;
+        sfname="main";
+        sformals=[];
+        sbody=[SReturn(Ast.Int, SFunctcall("MAIN", []))]
+    } in
+    let has_main = ref false in
     let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
         let function_decl m fdecl =
+            let m2 = (
+                if fdecl.sfname = "MAIN" then
+                    let () = has_main := true in
+                    (* Construct wrapper around "MAIN" *)
+                    let ftype = L.function_type (ltype_of_typ Ast.Int) (Array.of_list []) in
+                    StringMap.add main_fdecl.sfname (L.define_function main_fdecl.sfname ftype the_module, main_fdecl) m
+                else m
+            ) in
+
             let name = fdecl.sfname
             and formal_types =
                 Array.of_list (List.map (fun (t,_) -> ltype_of_typ t) fdecl.sformals)
             in let ftype = L.function_type (ltype_of_typ fdecl.srtyp) formal_types in
-            StringMap.add name (L.define_function name ftype the_module, fdecl) m in
+            StringMap.add name (L.define_function name ftype the_module, fdecl) m2 in
         List.fold_left function_decl StringMap.empty p.sfunctions in
 
     (* Construct function body statements *)
@@ -57,14 +80,14 @@ let translate (p: program) (mod_name: string) =
         let int_format_str = L.build_global_stringptr "%d\n" "ifmt" builder in
 
         (* Construct function args as local vars *)
-        let add_local m (t, n) p =
+        let add_local builder m (t, n) p =
             L.set_value_name n p;
             let local = L.build_alloca (ltype_of_typ t) n builder in
             ignore (L.build_store p local builder);
             StringMap.add n local m
         in
         let local_vars_args =
-            let formals = List.fold_left2 add_local StringMap.empty fdecl.sformals
+            let formals = List.fold_left2 (add_local builder) StringMap.empty fdecl.sformals
                     (Array.to_list (L.params the_function)) in
             formals
         in
@@ -88,22 +111,26 @@ let translate (p: program) (mod_name: string) =
                 and e2' = build_expr builder e2 in
                 (
                     match op with
-                    | A.Add -> L.build_add
-                    | A.Sub -> L.build_sub
-                    | A.And -> L.build_and
-                    | A.Or -> L.build_or
-                    | A.Equal -> L.build_icmp L.Icmp.Eq
-                    | A.Neq -> L.build_icmp L.Icmp.Ne
-                    | A.Less -> L.build_icmp L.Icmp.Slt
+                    | Ast.Add -> L.build_add
+                    | Ast.Sub -> L.build_sub
+                    | Ast.Mul -> L.build_mul
+                    | Ast.Div -> L.build_sdiv
+                    | Ast.And -> L.build_and
+                    | Ast.Or -> L.build_or
+                    | Ast.Eq -> L.build_icmp L.Icmp.Eq
+                    | Ast.Neq -> L.build_icmp L.Icmp.Ne
+                    | Ast.Less -> L.build_icmp L.Icmp.Slt
+                    | Ast.Greater -> L.build_icmp L.Icmp.Sgt
                 ) e1' e2' "tmp" builder
-            | SCall ("MEOW", [e]) ->
+            | SFunctcall ("MEOW", [e]) ->
                 L.build_call printf_func [| int_format_str ; (build_expr builder e) |]
                     "printf" builder
-            | SCall (f, args) ->
+            | SFunctcall (f, args) ->
                 let (fdef, fdecl) = StringMap.find f function_decls in
                 let llargs = List.rev (List.map (build_expr builder) (List.rev args)) in
                 let result = f ^ "_result" in
                 L.build_call fdef (Array.of_list llargs) result builder
+            | _ -> raise (Unimplemented "unimplemented expression")
         in
 
         (* LLVM insists each basic block end with exactly one "terminator"
@@ -123,13 +150,13 @@ let translate (p: program) (mod_name: string) =
             | SReturn e -> ignore(L.build_ret (build_expr builder e) builder); builder
             | SBind b ->
                 let t, _ = b in
-                let () = local_vars := add_local !local_vars b (init_of_typ t) in
-                ()
-            | SBindAssign b, e ->
+                let () = local_vars := add_local builder !local_vars b (init_of_typ t) in
+                builder
+            | SBindAssign(b, e) ->
                 let t, _ = b in
-                let () = local_vars := add_local !local_vars b (build_expr builder e) in
-                ()
-            | _ -> raise Unimplemented
+                let () = local_vars := add_local builder !local_vars b (build_expr builder e) in
+                builder
+            | _ -> raise (Unimplemented "unimplemented statement")
                 (*
             | SIf (predicate, then_stmt, else_stmt) ->
                 let bool_val = build_expr builder predicate in
@@ -164,12 +191,17 @@ let translate (p: program) (mod_name: string) =
 *)
         in
         (* Build the code for each statement in the function *)
-        let func_builder = build_stmt builder (SBlock fdecl.sbody) in
+        let func_builder = List.fold_left build_stmt builder fdecl.sbody in
 
         (* Add a return if the last block falls off the end *)
         add_terminal func_builder (L.build_ret (L.const_int i32_t 0))
-
     in
 
-    List.iter build_function_body functions;
+    List.iter build_function_body p.sfunctions;
+    let () = (
+        if !has_main then
+            let _ = build_function_body main_fdecl in ()
+        else ()
+    ) in
+
     the_module

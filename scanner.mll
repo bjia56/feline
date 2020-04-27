@@ -21,7 +21,6 @@ rule token =
     | "ME"                                 { ME }
     | "TEH"                                { TEH }
     | "FUNC"                               { FUNC }
-    | "MEOW"                               { MEOW }
     | "CLAS"                               { CLAS }
     | "CONS"                               { CONS }
     | "DIS"                                { DIS }
@@ -55,7 +54,7 @@ rule token =
     | "INTEGR"                             { INTEGR }
     | "STRIN"                              { STRIN }
     | "BUL"                                { BUL }
+    | "NOL"                                { NOL }
     | ['a'-'z' 'A'-'Z' '_']
       ['a'-'z' 'A'-'Z' '_' '0'-'9']* as id { IDENT(id) }
-    (*| '"'							                   {QUOTATION}    *)
     | eof                                  { EOF }

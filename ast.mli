@@ -1,8 +1,8 @@
 (* Abstract Syntax Tree for Feline *)
 
 type typ =
-    | Void
     | Null
+    | Void
     | Int
     | String
     | Bool
@@ -25,7 +25,7 @@ type binop =
 type unop = Not
 
 type expr =
-    | NullLit of unit
+    | NullLit
     | IntLit of int
     | BoolLit of bool
     | StrLit of string
@@ -36,7 +36,6 @@ type expr =
     | ClassFunctcall of string * functcall
     | ClassMemAccess of string * string
 and functcall = string * expr list
-   
 
 type bind = typ * string
 

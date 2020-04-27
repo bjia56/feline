@@ -4,7 +4,7 @@ open ParserUtils
 %}
 
 %token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS DIS NU CONS DES WIT IN MEOW KTHXBAI KTHX QUESTION COLON EVRYONE MESELF NEWLINE
-%token INTEGR STRIN BUL NOL 
+%token INTEGR STRIN BUL NOL
 %token NOT_SAYM_AZ SAYM_AZ
 %token BIGGR_THAN SMALLR_THAN
 %token PLUZ MYNUZ TYMEZ DIVYD
@@ -36,18 +36,8 @@ decls:
     | class_decl NEWLINE decls { { classes=$1::$3.classes; functions=$3.functions; globals=$3.globals } }
     | NEWLINE decls            { $2 }
 
-  /*FUNCTCALL:
-    | MEOW WIT args
-
-  args:
-    | expr
-    | expr args
-
-    STRLIT:
-    | QUOTATION  QUOTATION
-    | QUOTATION id QUOTATION*/
-  
 expr:
+    | NOL                   { NullLit }
     | INTLIT                { IntLit($1) }
     | BLIT                  { BoolLit($1) }
     | STRLIT                { StrLit($1) }
@@ -73,7 +63,6 @@ typ:
     | STRIN  { String }
     | IDENT  { TypIdent($1) }
     | BUL    { Bool }
-    | NOL    { Null }
 
 func_decl:
     | HAI ME TEH typ FUNC IDENT formals_opt NEWLINE stmt_list KTHXBAI
@@ -88,7 +77,7 @@ func_decl:
     | HAI ME TEH FUNC IDENT formals_opt NEWLINE stmt_list KTHXBAI
         {
             {
-                rtyp=Null;
+                rtyp=Void;
                 fname=$5;
                 formals=$6;
                 body=$8;
@@ -305,7 +294,7 @@ class_func_decl:
     | DIS TEH FUNC IDENT formals_opt NEWLINE stmt_list KTHXBAI
         {
             {
-                rtyp=Null;
+                rtyp=Void;
                 fname=$4;
                 formals=$5;
                 body=$7;
