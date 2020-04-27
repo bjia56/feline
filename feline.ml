@@ -90,10 +90,10 @@ let _ =
     if !testcases then
         ParserTests.run_tests ()
     else
-        let () = print_endline ("Compiling " ^ (string_of_int (List.length !files)) ^ " files...") in
+        (*let () = print_endline ("Compiling " ^ (string_of_int (List.length !files)) ^ " files...") in*)
         try (
             let asts = asts_of_file_list !files in
-            let () = print_parsed_modules asts in
+            (*let () = print_parsed_modules asts in*)
             let sasts = StringMap.map sprogram_of_ast asts in
             let name, sast = List.hd (StringMap.bindings sasts) in
             let () = print_string (Llvm.string_of_llmodule (Irgen.translate name sast)) in

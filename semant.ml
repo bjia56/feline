@@ -32,7 +32,7 @@ let check (classes, functions, globals) =
       StringMap.add "MEOW" {
       	rtyp = Int;
       	fname = "MEOW";
-      	formals = [(Int, "x")];
+      	formals = [(String, "x")];
       	body = [] } StringMap.empty
     in
 

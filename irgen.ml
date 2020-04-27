@@ -105,6 +105,7 @@ let translate (mod_name: string) (p: sprogram) =
             match e with
             | SIntLit i -> L.const_int i32_t i
             | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
+            | SStrLit s -> L.build_global_stringptr s "tmp_str_lit" builder
             | SIdent s -> L.build_load (lookup s) s builder
             | SBinop (e1, op, e2) ->
                 let e1' = build_expr builder e1
@@ -123,7 +124,7 @@ let translate (mod_name: string) (p: sprogram) =
                     | Ast.Greater -> L.build_icmp L.Icmp.Sgt
                 ) e1' e2' "tmp" builder
             | SFunctcall ("MEOW", [e]) ->
-                L.build_call printf_func [| int_format_str ; (build_expr builder e) |]
+                L.build_call printf_func [| str_format_str ; (build_expr builder e) |]
                     "printf" builder
             | SFunctcall (f, args) ->
                 let (fdef, fdecl) = StringMap.find f function_decls in
