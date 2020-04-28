@@ -542,9 +542,9 @@ let check (classes, functions, globals) =
 
 		let locals = [] in
 
-		(* Raise an exception if the given rvalue type cannot be assigned to 
+		(* Raise an exception if the given rvalue type cannot be assigned to
 		   the given lvalue type *)
-		let check_assign lvaluet rvaluet err = 
+		let check_assign lvaluet rvaluet err =
 		  if lvaluet = rvaluet then lvaluet else raise (Failure err)
 		in
 
@@ -567,7 +567,7 @@ let check (classes, functions, globals) =
 				| (ty, name) when (* ty = type_of_identifier m symbols
 								  &&  *) name = m -> true
 				| _ -> false
-			in 
+			in
 			try List.find pred classd.pubmembers
 			with Not_found -> raise (Failure ("no such member " ^ m ^ " in class " ^ classd.cname))
 		in
@@ -579,7 +579,7 @@ let check (classes, functions, globals) =
 				| (ty, name) when (* ty = type_of_identifier m symbols
 								  && *) name = m -> true
 				| _ -> false
-			in 
+			in
 			try List.find pred classd.privmembers
 			with Not_found -> raise (Failure ("no such member " ^ m ^ " in class " ^ classd.cname))
 		in
@@ -587,7 +587,7 @@ let check (classes, functions, globals) =
 		(* Return a semantically-checked expression (sexpr) , i.e. with a type *)
 		let rec check_expr expr sym_tbl =
 		   match expr with
-		  | NullLit l -> ((Null, SNullLit l), sym_tbl)
+		  | NullLit -> ((Null, SNullLit), sym_tbl)
 		  | IntLit l -> ((Int, SIntLit l), sym_tbl)
 		  | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
 		  | StrLit  l -> ((String, SStrLit l), sym_tbl)
@@ -596,8 +596,8 @@ let check (classes, functions, globals) =
 		    let ((t1, e1'), sym_tbl) = check_expr e1 sym_tbl in
 		    let ((t2, e2'), sym_tbl) = check_expr e2 sym_tbl in
 		    (* TODO: Make error more specific with pretty-printing functions *)
-		    let err = "illegal binary operator " 
-		  	in 
+		    let err = "illegal binary operator "
+		  	in
 		  	(* All binary operators require operands of the same type *)
 		  	if t1 = t2 then
 		  	   (* Determine expression type based on operator and operator types *)
@@ -627,24 +627,24 @@ let check (classes, functions, globals) =
 		  		   let ((et, e'), sym_tbl) = check_expr e sym_tbl in
 		  		   let err = "illegal argument found in function call"
 		  		   in ((check_assign ft et err, e'), sym_tbl)
-		       in 
+		       in
 		       let args' = List.map2 check_call fd.formals args in
 		       let args'' = List.map (fun (a, b) -> a) args' in
 		   	   ((fd.rtyp, SFunctcall(fname, args'')), sym_tbl)
 		   	(* TODO: Need to account for ClassFunctcall, ClassMemAccess *)
 		   | ClassFunctcall(fname, (instance, args)) ->
 		   		let _ = "can't find public function " ^ fname in
-		   		let fd = 
+		   		let fd =
 			   		if instance = "DIS" then
-			   		        (* Calling a function within the class *)	
+			   		        (* Calling a function within the class *)
 			   				(* Check both public and private functions of class *)
-			   				try 
-			   					find_pub_func fname calling_class 
-			   				with Failure(err) -> 				
+			   				try
+			   					find_pub_func fname calling_class
+			   				with Failure(err) ->
 			   					find_priv_func fname calling_class
-			   					 
+
 			   		else   (* Calling a function outside the class *)
-			   			   (* Check that the object has been instantiated within 
+			   			   (* Check that the object has been instantiated within
 		   					the func scope *)
 		   				   (* Check that fname is a valid public function in class *)
 			   				find_pub_func fname (find_class (ud_type_to_str (type_of_identifier instance sym_tbl)))
@@ -658,7 +658,7 @@ let check (classes, functions, globals) =
 			  		   let ((et, e'), sym_tbl) = check_expr e sym_tbl in
 			  		   let err = "illegal argument found in function call"
 			  		   in ((check_assign ft et err, e'), sym_tbl)
-			       in 
+			       in
 			       (* Check that type of arguments is correct *)
 			       let args' = List.map2 check_call fd.formals args in
 			       let args'' = List.map (fun (a, b) -> a) args' in
@@ -667,12 +667,12 @@ let check (classes, functions, globals) =
 				   ( ( fd.rtyp, SClassFunctcall (fname, (calling_class.cname, args''))), sym_tbl)
 		   | ClassMemAccess(mem, instance) ->
 		        let _ = "can't find public member " ^ mem in
-		   		let (found_mem, instance_type) = 
+		   		let (found_mem, instance_type) =
 		   			if instance = "DIS" then
 		   			         (* Invoking a member within the class *)
 		   					 (* Check both public and private members of class *)
 		   					let instance_type_decl = calling_class in
-		   					 try 
+		   					 try
 		   					 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
 		   					 with Failure(err) ->
 		   					 	(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
@@ -701,10 +701,10 @@ let check (classes, functions, globals) =
 		    [] -> []
 		  | s :: sl -> let (st, lc, sy) = check_stmt s locals symbols in st :: check_stmt_list sl lc sy
 		(* Return a semantically-checked statement i.e. containing sexprs *)
-		and check_stmt stmt locals (* list of locals *) symbols (* symbol map *) = 
+		and check_stmt stmt locals (* list of locals *) symbols (* symbol map *) =
 			match stmt with
 		    Expr e -> let ((ty, str), tbl) = check_expr e symbols in (SExpr(ty, str), locals, symbols)
-		   | Bind b -> 
+		   | Bind b ->
 			     let (ty, name) = b in
 			     let locals = locals @ [(ty, name)] in
 			     let symbols = StringMap.add name ty symbols in
@@ -718,7 +718,7 @@ let check (classes, functions, globals) =
 		         let ((typ, str), tbl) = check_expr e symbols in
 		         let err = "illegal assignment in expression" in
 		         let _ = check_assign ty typ err in
-		         (SBindAssign((ty, name), (typ, str)), locals, symbols) 
+		         (SBindAssign((ty, name), (typ, str)), locals, symbols)
 		   | Assign(var, e) ->
 		   	 let lt = type_of_identifier var symbols
 		   	 and ((rt, e'), _) = check_expr e symbols in
@@ -726,7 +726,7 @@ let check (classes, functions, globals) =
 		   	 let _ = check_assign lt rt err in
 		 	 (SAssign(var, (rt, e')), locals, symbols)
 		   (* | Return e ->
-		     let ((t, e'), _) = check_expr e symbols in 
+		     let ((t, e'), _) = check_expr e symbols in
 		     if t = func.rtyp then (SReturn (t, e'), locals, symbols)
 		     else raise (
 		     	Failure ("return gives incorrect type")
@@ -734,14 +734,14 @@ let check (classes, functions, globals) =
 		   (* TODO: Need to account for ClassMemRassn and Instance *)
 		   | ClassMemRassn(mem, instance, expr) ->
 		   	  let _ = "can't find public member " ^ mem in
-		      let (found_mem, instance_type) = 
+		      let (found_mem, instance_type) =
 		      	if instance = "DIS" then
 		      	         (* Invoking a member within the class *)
 		      			 (* Check both public and private members of class *)
 		      			 let instance_type_decl = calling_class in
 		      			 try
 		      			 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
-		      			 with Failure(err) -> 
+		      			 with Failure(err) ->
 		      				(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
 		      	else   (* Invoking a member outside the class *)
 		   		       (* Check that the object has been instantiatiated *)
@@ -749,10 +749,10 @@ let check (classes, functions, globals) =
 		   		       let instance_type_decl = find_class (ud_type_to_str instance_type) in
 	   		    	   (* Check that the mem name is a valid public member in class *)
 	   		    	   (find_pub_mem mem instance_type_decl, instance_type)
-	   		   in 
+	   		   in
 	   		   let ((rt, e'), _) = check_expr expr symbols in
 	   		   let err = "illegal assignment in expression" in
-	   		   let (lt, _) = found_mem in 
+	   		   let (lt, _) = found_mem in
  	   		   let _ = check_assign lt rt err in
 	   		   (SClassMemRassn(mem, instance, (rt, e')), locals, symbols)
 		   | Instance (ud_type, name) ->
@@ -769,18 +769,18 @@ let check (classes, functions, globals) =
 		     	let symbols = StringMap.add name ud_type symbols in
 		     	let () = check_binds "local" locals in
 		     	(SInstance(ud_type, name), locals, symbols)
-		in 
+		in
 		check_stmt_list cons locals symbols
 
 	in
 
-	let check_des (calling_class, des) = 
+	let check_des (calling_class, des) =
 
 		let locals = [] in
 
-		(* Raise an exception if the given rvalue type cannot be assigned to 
+		(* Raise an exception if the given rvalue type cannot be assigned to
 		   the given lvalue type *)
-		let check_assign lvaluet rvaluet err = 
+		let check_assign lvaluet rvaluet err =
 		  if lvaluet = rvaluet then lvaluet else raise (Failure err)
 		in
 
@@ -803,7 +803,7 @@ let check (classes, functions, globals) =
 				| (ty, name) when (* ty = type_of_identifier m symbols
 								  &&  *) name = m -> true
 				| _ -> false
-			in 
+			in
 			try List.find pred classd.pubmembers
 			with Not_found -> raise (Failure ("no such member " ^ m ^ " in class " ^ classd.cname))
 		in
@@ -815,7 +815,7 @@ let check (classes, functions, globals) =
 				| (ty, name) when (* ty = type_of_identifier m symbols
 								  && *) name = m -> true
 				| _ -> false
-			in 
+			in
 			try List.find pred classd.privmembers
 			with Not_found -> raise (Failure ("no such member " ^ m ^ " in class " ^ classd.cname))
 		in
@@ -823,7 +823,7 @@ let check (classes, functions, globals) =
 		(* Return a semantically-checked expression (sexpr) , i.e. with a type *)
 		let rec check_expr expr sym_tbl =
 		   match expr with
-		  | NullLit l -> ((Null, SNullLit l), sym_tbl)
+		  | NullLit -> ((Null, SNullLit), sym_tbl)
 		  | IntLit l -> ((Int, SIntLit l), sym_tbl)
 		  | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
 		  | StrLit  l -> ((String, SStrLit l), sym_tbl)
@@ -832,8 +832,8 @@ let check (classes, functions, globals) =
 		    let ((t1, e1'), sym_tbl) = check_expr e1 sym_tbl in
 		    let ((t2, e2'), sym_tbl) = check_expr e2 sym_tbl in
 		    (* TODO: Make error more specific with pretty-printing functions *)
-		    let err = "illegal binary operator " 
-		  	in 
+		    let err = "illegal binary operator "
+		  	in
 		  	(* All binary operators require operands of the same type *)
 		  	if t1 = t2 then
 		  	   (* Determine expression type based on operator and operator types *)
@@ -863,24 +863,24 @@ let check (classes, functions, globals) =
 		  		   let ((et, e'), sym_tbl) = check_expr e sym_tbl in
 		  		   let err = "illegal argument found in function call"
 		  		   in ((check_assign ft et err, e'), sym_tbl)
-		       in 
+		       in
 		       let args' = List.map2 check_call fd.formals args in
 		       let args'' = List.map (fun (a, b) -> a) args' in
 		   	   ((fd.rtyp, SFunctcall(fname, args'')), sym_tbl)
 		   	(* TODO: Need to account for ClassFunctcall, ClassMemAccess *)
 		   | ClassFunctcall(fname, (instance, args)) ->
 		   		let _ = "can't find public function " ^ fname in
-		   		let fd = 
+		   		let fd =
 			   		if instance = "DIS" then
-			   		        (* Calling a function within the class *)	
+			   		        (* Calling a function within the class *)
 			   				(* Check both public and private functions of class *)
-			   				try 
-			   					find_pub_func fname calling_class 
-			   				with Failure(err) -> 				
+			   				try
+			   					find_pub_func fname calling_class
+			   				with Failure(err) ->
 			   					find_priv_func fname calling_class
-			   					 
+
 			   		else   (* Calling a function outside the class *)
-			   			   (* Check that the object has been instantiated within 
+			   			   (* Check that the object has been instantiated within
 		   					the func scope *)
 		   				   (* Check that fname is a valid public function in class *)
 			   				find_pub_func fname (find_class (ud_type_to_str (type_of_identifier instance sym_tbl)))
@@ -894,7 +894,7 @@ let check (classes, functions, globals) =
 			  		   let ((et, e'), sym_tbl) = check_expr e sym_tbl in
 			  		   let err = "illegal argument found in function call"
 			  		   in ((check_assign ft et err, e'), sym_tbl)
-			       in 
+			       in
 			       (* Check that type of arguments is correct *)
 			       let args' = List.map2 check_call fd.formals args in
 			       let args'' = List.map (fun (a, b) -> a) args' in
@@ -903,12 +903,12 @@ let check (classes, functions, globals) =
 				   ( ( fd.rtyp, SClassFunctcall (fname, (calling_class.cname, args''))), sym_tbl)
 		   | ClassMemAccess(mem, instance) ->
 		        let _ = "can't find public member " ^ mem in
-		   		let (found_mem, instance_type) = 
+		   		let (found_mem, instance_type) =
 		   			if instance = "DIS" then
 		   			         (* Invoking a member within the class *)
 		   					 (* Check both public and private members of class *)
 		   					let instance_type_decl = calling_class in
-		   					 try 
+		   					 try
 		   					 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
 		   					 with Failure(err) ->
 		   					 	(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
@@ -937,10 +937,10 @@ let check (classes, functions, globals) =
 		    [] -> []
 		  | s :: sl -> let (st, lc, sy) = check_stmt s locals symbols in st :: check_stmt_list sl lc sy
 		(* Return a semantically-checked statement i.e. containing sexprs *)
-		and check_stmt stmt locals (* list of locals *) symbols (* symbol map *) = 
+		and check_stmt stmt locals (* list of locals *) symbols (* symbol map *) =
 			match stmt with
 		    Expr e -> let ((ty, str), tbl) = check_expr e symbols in (SExpr(ty, str), locals, symbols)
-		   | Bind b -> 
+		   | Bind b ->
 			     let (ty, name) = b in
 			     let locals = locals @ [(ty, name)] in
 			     let symbols = StringMap.add name ty symbols in
@@ -954,7 +954,7 @@ let check (classes, functions, globals) =
 		         let ((typ, str), tbl) = check_expr e symbols in
 		         let err = "illegal assignment in expression" in
 		         let _ = check_assign ty typ err in
-		         (SBindAssign((ty, name), (typ, str)), locals, symbols) 
+		         (SBindAssign((ty, name), (typ, str)), locals, symbols)
 		   | Assign(var, e) ->
 		   	 let lt = type_of_identifier var symbols
 		   	 and ((rt, e'), _) = check_expr e symbols in
@@ -962,7 +962,7 @@ let check (classes, functions, globals) =
 		   	 let _ = check_assign lt rt err in
 		 	 (SAssign(var, (rt, e')), locals, symbols)
 		   (* | Return e ->
-		     let ((t, e'), _) = check_expr e symbols in 
+		     let ((t, e'), _) = check_expr e symbols in
 		     if t = func.rtyp then (SReturn (t, e'), locals, symbols)
 		     else raise (
 		     	Failure ("return gives incorrect type")
@@ -970,14 +970,14 @@ let check (classes, functions, globals) =
 		   (* TODO: Need to account for ClassMemRassn and Instance *)
 		   | ClassMemRassn(mem, instance, expr) ->
 		   	  let _ = "can't find public member " ^ mem in
-		      let (found_mem, instance_type) = 
+		      let (found_mem, instance_type) =
 		      	if instance = "DIS" then
 		      	         (* Invoking a member within the class *)
 		      			 (* Check both public and private members of class *)
 		      			 let instance_type_decl = calling_class in
 		      			 try
 		      			 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
-		      			 with Failure(err) -> 
+		      			 with Failure(err) ->
 		      				(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
 		      	else   (* Invoking a member outside the class *)
 		   		       (* Check that the object has been instantiatiated *)
@@ -985,10 +985,10 @@ let check (classes, functions, globals) =
 		   		       let instance_type_decl = find_class (ud_type_to_str instance_type) in
 	   		    	   (* Check that the mem name is a valid public member in class *)
 	   		    	   (find_pub_mem mem instance_type_decl, instance_type)
-	   		   in 
+	   		   in
 	   		   let ((rt, e'), _) = check_expr expr symbols in
 	   		   let err = "illegal assignment in expression" in
-	   		   let (lt, _) = found_mem in 
+	   		   let (lt, _) = found_mem in
  	   		   let _ = check_assign lt rt err in
 	   		   (SClassMemRassn(mem, instance, (rt, e')), locals, symbols)
 		   | Instance (ud_type, name) ->
@@ -1005,7 +1005,7 @@ let check (classes, functions, globals) =
 		     	let symbols = StringMap.add name ud_type symbols in
 		     	let () = check_binds "local" locals in
 		     	(SInstance(ud_type, name), locals, symbols)
-		in 
+		in
 		check_stmt_list des locals symbols
 
 	in
