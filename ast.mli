@@ -1,8 +1,8 @@
 (* Abstract Syntax Tree for Feline *)
 
 type typ =
-    | Void
     | Null
+    | Void
     | Int
     | String
     | Bool
@@ -25,6 +25,7 @@ type binop =
 type unop = Not
 
 type expr =
+    | NullLit
     | IntLit of int
     | BoolLit of bool
     | StrLit of string
@@ -32,6 +33,8 @@ type expr =
     | Binop of expr * binop * expr
     | Unop of unop * expr
     | Functcall of functcall
+    | ClassFunctcall of string * functcall
+    | ClassMemAccess of string * string
 and functcall = string * expr list
 
 type bind = typ * string
@@ -42,6 +45,8 @@ type stmt =
     | Bind of bind
     | BindAssign of bind * expr
     | Assign of string * expr
+    | ClassMemRassn of string * string * expr
+    | Instance of bind
 
 type func_decl = {
     rtyp: typ;
@@ -50,7 +55,7 @@ type func_decl = {
     body: stmt list;
 }
 
-type cons_decl = bind list * stmt list
+type cons_decl = stmt list
 
 type des_decl = stmt list
 
@@ -69,3 +74,13 @@ type program = {
     functions: func_decl list;
     globals: bind list;
 }
+
+(* Pretty printing functions *)
+(* let string_of_typ = function
+      Void -> "void"
+    | Null -> "null"
+    | Int -> "int"
+    | String -> "string"
+    | Bool -> "bool"
+    | Exception of string -> "exception"
+    | TypIdent of string -> "custom type" *)

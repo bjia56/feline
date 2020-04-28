@@ -13,6 +13,7 @@ rule token =
     | "A"                                  { A }
     | "VARBL"                              { VARBL }
     | "ITZ"                                { ITZ }
+    | "NU"                                 { NU  }
     | "GIVEZ"                              { GIVEZ }
     | "PLS"                                { PLS }
     | "GIV"                                { GIV }
@@ -20,12 +21,12 @@ rule token =
     | "ME"                                 { ME }
     | "TEH"                                { TEH }
     | "FUNC"                               { FUNC }
-    | "MEOW"                               { MEOW }
     | "CLAS"                               { CLAS }
     | "CONS"                               { CONS }
     | "DIS"                                { DIS }
     | "DES"                                { DES }
     | "WIT"                                { WIT }
+    | "IN"                                 { IN }
     | "KTHXBAI"                            { KTHXBAI }
     | "EVRYONE"                            { EVRYONE }
     | "MESELF"                             { MESELF }
@@ -53,7 +54,7 @@ rule token =
     | "INTEGR"                             { INTEGR }
     | "STRIN"                              { STRIN }
     | "BUL"                                { BUL }
+    | "NOL"                                { NOL }
     | ['a'-'z' 'A'-'Z' '_']
       ['a'-'z' 'A'-'Z' '_' '0'-'9']* as id { IDENT(id) }
-    (*| '"'							                   {QUOTATION}    *)
     | eof                                  { EOF }

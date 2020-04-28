@@ -1,3 +1,5 @@
+open Ast
+
 let ast_of_chan chan =
     let lexbuf = Lexing.from_channel chan in
     try (
@@ -13,7 +15,7 @@ let ast_of_file file_name =
 
 let empty_string_list: string list = []
 
-module AstMap = Map.Make(String)
+module StringMap = Map.Make(String)
 exception InvalidFelineFileName of string
 
 let rec split_string (c: char) (s: string): string list =
@@ -46,15 +48,18 @@ let get_module_name (file: string): string =
     let components = split_string '/' trimmed in
     List.hd (List.rev components)
 
-let rec asts_of_file_list (files: string list): Ast.program AstMap.t =
+let rec asts_of_file_list (files: string list): Ast.program StringMap.t =
     match files with
-    | [] -> AstMap.empty
+    | [] -> StringMap.empty
     | hd::tl ->
         let tl_result = asts_of_file_list tl in
         let module_name = get_module_name hd in
-        AstMap.add module_name (ast_of_file hd) tl_result
+        StringMap.add module_name (ast_of_file hd) tl_result
 
-let print_parsed_modules (asts: Ast.program AstMap.t) =
+let sprogram_of_ast (ast: Ast.program): Sast.sprogram =
+    Semant.check (ast.classes, ast.functions, ast.globals)
+
+let print_parsed_modules (asts: Ast.program StringMap.t) =
     let is_first = ref true in
     let print_binding k v =
         if not !is_first then
@@ -65,7 +70,7 @@ let print_parsed_modules (asts: Ast.program AstMap.t) =
             print_string k
     in
     let () = print_string "Found modules: " in
-    let () = AstMap.iter print_binding asts in
+    let () = StringMap.iter print_binding asts in
     print_endline ""
 
 let _ =
@@ -85,9 +90,13 @@ let _ =
     if !testcases then
         ParserTests.run_tests ()
     else
-        let () = print_endline ("Compiling " ^ (string_of_int (List.length !files)) ^ " files...") in
+        (*let () = print_endline ("Compiling " ^ (string_of_int (List.length !files)) ^ " files...") in*)
         try (
             let asts = asts_of_file_list !files in
-            print_parsed_modules asts
+            (*let () = print_parsed_modules asts in*)
+            let sasts = StringMap.map sprogram_of_ast asts in
+            let name, sast = List.hd (StringMap.bindings sasts) in
+            let () = print_string (Llvm.string_of_llmodule (Irgen.translate name sast)) in
+            ()
         ) with
         | ParserUtils.SyntaxError(e) -> print_endline e

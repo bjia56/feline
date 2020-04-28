@@ -1,8 +1,8 @@
 build:
-	ocamlbuild -Is interpreter,interpreter/builtin,tests feline.native
+	ocamlbuild -pkgs llvm -Is interpreter,interpreter/builtin,tests feline.native
 
 clean:
-	ocamlbuild -Is interpreter,interpreter/builtin,tests -clean
+	ocamlbuild -pkgs llvm -Is interpreter,interpreter/builtin,tests -clean
 	rm -f parser.ml
 	rm -f parser.mli
 	rm -f parser.output
