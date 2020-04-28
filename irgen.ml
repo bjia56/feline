@@ -7,9 +7,17 @@ module StringMap = Map.Make(String)
 
 exception Unimplemented of string
 
+let main_fdecl = {
+    srtyp=Ast.Int;
+    sfname="main";
+    sformals=[];
+    sbody=[SReturn(Ast.Int, SFunctcall("MAIN", []))]
+}
+
 let translate (mod_name: string) (p: sprogram) =
     let context = L.global_context () in
     let the_module = L.create_module context mod_name in
+    let class_lltype_map : (L.lltype StringMap.t) ref = ref StringMap.empty in
 
     (* Get types from the context *)
     let i32_t = L.i32_type context
@@ -22,6 +30,8 @@ let translate (mod_name: string) (p: sprogram) =
         match t with
         | Ast.Int -> i32_t
         | Ast.Bool -> i1_t
+        | Ast.TypIdent s ->
+            L.pointer_type (StringMap.find s !class_lltype_map)
         | _ -> raise (Unimplemented "cannot convert unimplemented type")
     in
 
@@ -32,26 +42,7 @@ let translate (mod_name: string) (p: sprogram) =
         | _ -> raise (Unimplemented "cannot init unimplemented type")
     in
 
-    (* Construct global vars *)
-    let global_vars : L.llvalue StringMap.t =
-        let global_var m (t, n) =
-            let init = init_of_typ t
-            in StringMap.add n (L.define_global n init the_module) m in
-        List.fold_left global_var StringMap.empty p.sglobals in
-
-    (* Define printf *)
-    let printf_t : L.lltype =
-        L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
-    let printf_func : L.llvalue =
-        L.declare_function "printf" printf_t the_module in
-
     (* Construct global funcs *)
-    let main_fdecl = {
-        srtyp=Ast.Int;
-        sfname="main";
-        sformals=[];
-        sbody=[SReturn(Ast.Int, SFunctcall("MAIN", []))]
-    } in
     let has_main = ref false in
     let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
         let function_decl m fdecl =
@@ -70,6 +61,81 @@ let translate (mod_name: string) (p: sprogram) =
             in let ftype = L.function_type (ltype_of_typ fdecl.srtyp) formal_types in
             StringMap.add name (L.define_function name ftype the_module, fdecl) m2 in
         List.fold_left function_decl StringMap.empty p.sfunctions in
+
+    (* Construct classes *)
+    let class_decls : (L.lltype * (L.llvalue * sfunc_decl) StringMap.t * sclass_decl) StringMap.t =
+        let class_decl m cdecl =
+            (* Construct class type first *)
+            let name = cdecl.scname in
+            let members = List.map (fun (t,_) -> ltype_of_typ t) (List.rev_append (List.rev cdecl.spubmembers) cdecl.sprivmembers) in
+            let ctype = L.named_struct_type context name in
+            let () = L.struct_set_body ctype (Array.of_list members) true in
+
+            let () = class_lltype_map := StringMap.add name ctype !class_lltype_map in
+
+            (* Construct class functions *)
+            let class_func_decl m fdecl =
+                let name = fdecl.sfname
+                and formal_types =
+                    Array.of_list ((L.pointer_type ctype)::List.tl (List.map (fun (t,_) -> ltype_of_typ t) fdecl.sformals))
+                in let ftype = L.function_type (ltype_of_typ fdecl.srtyp) formal_types in
+                StringMap.add name (L.define_function name ftype the_module, fdecl) m in
+
+            let class_cons_decl m consdecl =
+                class_func_decl m {
+                    srtyp=Ast.Void;
+                    sfname="CONS";
+                    sformals=[TypIdent name, "DIS"];
+                    sbody=consdecl
+                }
+            in
+            let class_des_decl m desdecl =
+                class_func_decl m {
+                    srtyp=Ast.Void;
+                    sfname="DES";
+                    sformals=[TypIdent name, "DIS"];
+                    sbody=desdecl
+                }
+            in
+
+            let cfuncs = List.fold_left class_func_decl StringMap.empty cdecl.spubfuncs in
+            let cfuncs = List.fold_left class_func_decl cfuncs cdecl.sprivfuncs in
+            let cfuncs = List.fold_left class_cons_decl cfuncs cdecl.scons in
+            let cfuncs = List.fold_left class_des_decl cfuncs cdecl.sdes in
+
+            StringMap.add name (ctype, cfuncs, cdecl) m in
+        List.fold_left class_decl StringMap.empty p.sclasses in
+
+    (* Add class functions to global functions *)
+    let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
+        let funcs = ref function_decls in
+        let class_handler cname (_, m, _) =
+            let class_func_handler fname v =
+                funcs := StringMap.add fname v !funcs in
+            StringMap.iter class_func_handler m in
+        StringMap.iter class_handler class_decls;
+        !funcs in
+    let all_functions =
+        let funcs = ref p.sfunctions in
+        let class_handler cname (_, m, _) =
+            let class_func_handler fname (_, fdecl) =
+                funcs := fdecl::!funcs in
+            StringMap.iter class_func_handler m in
+        StringMap.iter class_handler class_decls;
+        !funcs in
+
+    (* Construct global vars *)
+    let global_vars : L.llvalue StringMap.t =
+        let global_var m (t, n) =
+            let init = init_of_typ t
+            in StringMap.add n (L.define_global n init the_module) m in
+        List.fold_left global_var StringMap.empty p.sglobals in
+
+    (* Define printf *)
+    let printf_t : L.lltype =
+        L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
+    let printf_func : L.llvalue =
+        L.declare_function "printf" printf_t the_module in
 
     (* Construct function body statements *)
     let build_function_body fdecl =
@@ -131,6 +197,10 @@ let translate (mod_name: string) (p: sprogram) =
                 let llargs = List.rev (List.map (build_expr builder) (List.rev args)) in
                 let result = f ^ "_result" in
                 L.build_call fdef (Array.of_list llargs) result builder
+            | SClassMemAccess (mem, inst, idx) ->
+                let v = lookup inst in
+                let access = inst ^ "_" ^ mem ^ "_access" in
+                L.build_load (L.build_struct_gep v idx access builder) access builder
             | _ -> raise (Unimplemented "unimplemented expression")
         in
 
@@ -198,7 +268,7 @@ let translate (mod_name: string) (p: sprogram) =
         add_terminal func_builder (L.build_ret (L.const_int i32_t 0))
     in
 
-    List.iter build_function_body p.sfunctions;
+    List.iter build_function_body all_functions;
     let () = (
         if !has_main then
             let _ = build_function_body main_fdecl in ()

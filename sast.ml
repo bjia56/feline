@@ -13,7 +13,7 @@ and sx =
     | SUnop of unop * sexpr
     | SFunctcall of sfunctcall
     | SClassFunctcall of string * sfunctcall
-    | SClassMemAccess of string * string
+    | SClassMemAccess of string * string * int (* member, instance, member index *)
 and sfunctcall = string * sexpr list
 
  type sstmt =

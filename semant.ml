@@ -141,6 +141,21 @@ let check (classes, functions, globals) =
 			try List.find pred classd.pubmembers
 			with Not_found -> raise (Failure ("no such public member " ^ m ^ " in class " ^ classd.cname))
 		in
+		let find_mem_idx m classd =
+            let count = ref 0 in
+			let pred x =
+                let () = count := !count + 1 in
+                match x with
+				(* Make sure both type and var name match *)
+				| (ty, name) when (* ty = type_of_identifier m symbols
+								  &&  *) name = m -> true
+				| _ -> false
+			in
+            try
+                let _ = List.find pred (List.rev_append (List.rev classd.pubmembers) classd.privmembers) in
+                !count - 1
+            with Not_found -> raise (Failure ("no such member " ^ m ^ " in class " ^ classd.cname))
+		in
 
 		(* Return a semantically-checked expression (sexpr) , i.e. with a type *)
 		let rec check_expr expr sym_tbl =
@@ -214,10 +229,11 @@ let check (classes, functions, globals) =
 	   		(* Check that the object has been instantiated *)
 	   		let instance_type = type_of_identifier instance sym_tbl in
 	   		(* Check that mem name is a valid public member in class *)
-	   		let _ = find_pub_mem mem ((find_class (ud_type_to_str instance_type))) in
+            let c = find_class (ud_type_to_str instance_type) in
+	   		let _ = find_pub_mem mem c in
 	   		(* Return format *)
 	   		(* (( typ, SClassMemAccess(string, string)), sym_tbl) *)
-	   		((instance_type, SClassMemAccess(mem, instance)), sym_tbl)
+	   		((instance_type, SClassMemAccess(mem, instance, find_mem_idx mem c)), sym_tbl)
 		in
 		(*
 		let check_bool_expr e sym_tbl =
@@ -328,6 +344,21 @@ let check (classes, functions, globals) =
 			try List.find pred classd.pubmembers
 			with Not_found -> raise (Failure ("no such member " ^ m ^ " in class " ^ classd.cname))
 		in
+		let find_mem_idx m classd =
+            let count = ref 0 in
+			let pred x =
+                let () = count := !count + 1 in
+                match x with
+				(* Make sure both type and var name match *)
+				| (ty, name) when (* ty = type_of_identifier m symbols
+								  &&  *) name = m -> true
+				| _ -> false
+			in
+            try
+                let _ = List.find pred (List.rev_append (List.rev classd.pubmembers) classd.privmembers) in
+                !count - 1
+			with Not_found -> raise (Failure ("no such member " ^ m ^ " in class " ^ classd.cname))
+		in
 
 		(* Return a private member from a class *)
 		let find_priv_mem m classd =
@@ -424,25 +455,25 @@ let check (classes, functions, globals) =
 				   ( ( fd.rtyp, SClassFunctcall (fname, (calling_class.cname, args''))), sym_tbl)
 		   | ClassMemAccess(mem, instance) ->
 		        let _ = "can't find public member " ^ mem in
-		   		let (found_mem, instance_type) =
+		   		let (found_mem, instance_type, instance_type_decl) =
 		   			if instance = "DIS" then
 		   			         (* Invoking a member within the class *)
 		   					 (* Check both public and private members of class *)
 		   					let instance_type_decl = calling_class in
 		   					 try
-		   					 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
+		   					 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname), instance_type_decl)
 		   					 with Failure(err) ->
-		   					 	(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
+		   					 	(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname), instance_type_decl)
 		   		    else   (* Invoking a member outside the class *)
 		   		    	   (* Check that the object has been instantiatiated *)
 		   		    	   let instance_type = type_of_identifier instance sym_tbl in
 		   		    	   let instance_type_decl = find_class (ud_type_to_str instance_type) in
 		   		    	   (* Check that the mem name is a valid public member in class *)
-		   		    	   (find_pub_mem mem instance_type_decl, instance_type)
+		   		    	   (find_pub_mem mem instance_type_decl, instance_type, instance_type_decl)
 		   		in let (ty, _) = found_mem
 		   		(* Return format *)
 		   		(* (( typ, SClassMemAccess(string, string)), sym_tbl) *)
-		   		in ((ty, SClassMemAccess(mem, instance)), sym_tbl)
+		   		in ((ty, SClassMemAccess(mem, instance, find_mem_idx mem instance_type_decl)), sym_tbl)
 
 		in
 
@@ -529,8 +560,8 @@ let check (classes, functions, globals) =
 		in
 		(* body of check_func *)
 		{ srtyp = func.rtyp;
-		  sfname = func.fname;
-		  sformals = func.formals;
+		  sfname = calling_class.cname ^ "_" ^ func.fname;
+		  sformals = (TypIdent calling_class.cname, "DIS")::func.formals;
 		  sbody = check_stmt_list func.body locals symbols
 	    }
 
@@ -569,6 +600,21 @@ let check (classes, functions, globals) =
 				| _ -> false
 			in
 			try List.find pred classd.pubmembers
+			with Not_found -> raise (Failure ("no such member " ^ m ^ " in class " ^ classd.cname))
+		in
+		let find_mem_idx m classd =
+            let count = ref 0 in
+			let pred x =
+                let () = count := !count + 1 in
+                match x with
+				(* Make sure both type and var name match *)
+				| (ty, name) when (* ty = type_of_identifier m symbols
+								  &&  *) name = m -> true
+				| _ -> false
+			in
+            try
+                let _ = List.find pred (List.rev_append (List.rev classd.pubmembers) classd.privmembers) in
+                !count - 1
 			with Not_found -> raise (Failure ("no such member " ^ m ^ " in class " ^ classd.cname))
 		in
 
@@ -667,25 +713,25 @@ let check (classes, functions, globals) =
 				   ( ( fd.rtyp, SClassFunctcall (fname, (calling_class.cname, args''))), sym_tbl)
 		   | ClassMemAccess(mem, instance) ->
 		        let _ = "can't find public member " ^ mem in
-		   		let (found_mem, instance_type) =
+		   		let (found_mem, instance_type, instance_type_decl) =
 		   			if instance = "DIS" then
 		   			         (* Invoking a member within the class *)
 		   					 (* Check both public and private members of class *)
 		   					let instance_type_decl = calling_class in
 		   					 try
-		   					 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
+		   					 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname), instance_type_decl)
 		   					 with Failure(err) ->
-		   					 	(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
+		   					 	(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname), instance_type_decl)
 		   		    else   (* Invoking a member outside the class *)
 		   		    	   (* Check that the object has been instantiatiated *)
 		   		    	   let instance_type = type_of_identifier instance sym_tbl in
 		   		    	   let instance_type_decl = find_class (ud_type_to_str instance_type) in
 		   		    	   (* Check that the mem name is a valid public member in class *)
-		   		    	   (find_pub_mem mem instance_type_decl, instance_type)
+		   		    	   (find_pub_mem mem instance_type_decl, instance_type, instance_type_decl)
 		   		in let (ty, _) = found_mem
 		   		(* Return format *)
 		   		(* (( typ, SClassMemAccess(string, string)), sym_tbl) *)
-		   		in ((ty, SClassMemAccess(mem, instance)), sym_tbl)
+		   		in ((ty, SClassMemAccess(mem, instance, find_mem_idx mem instance_type_decl)), sym_tbl)
 
 		in
 
@@ -807,6 +853,21 @@ let check (classes, functions, globals) =
 			try List.find pred classd.pubmembers
 			with Not_found -> raise (Failure ("no such member " ^ m ^ " in class " ^ classd.cname))
 		in
+		let find_mem_idx m classd =
+            let count = ref 0 in
+			let pred x =
+                let () = count := !count + 1 in
+                match x with
+				(* Make sure both type and var name match *)
+				| (ty, name) when (* ty = type_of_identifier m symbols
+								  &&  *) name = m -> true
+				| _ -> false
+			in
+            try
+                let _ = List.find pred (List.rev_append (List.rev classd.pubmembers) classd.privmembers) in
+                !count - 1
+            with Not_found -> raise (Failure ("no such member " ^ m ^ " in class " ^ classd.cname))
+		in
 
 		(* Return a private member from a class *)
 		let find_priv_mem m classd =
@@ -903,25 +964,25 @@ let check (classes, functions, globals) =
 				   ( ( fd.rtyp, SClassFunctcall (fname, (calling_class.cname, args''))), sym_tbl)
 		   | ClassMemAccess(mem, instance) ->
 		        let _ = "can't find public member " ^ mem in
-		   		let (found_mem, instance_type) =
+		   		let (found_mem, instance_type, instance_type_decl) =
 		   			if instance = "DIS" then
 		   			         (* Invoking a member within the class *)
 		   					 (* Check both public and private members of class *)
 		   					let instance_type_decl = calling_class in
 		   					 try
-		   					 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
+		   					 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname), instance_type_decl)
 		   					 with Failure(err) ->
-		   					 	(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
+		   					 	(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname), instance_type_decl)
 		   		    else   (* Invoking a member outside the class *)
 		   		    	   (* Check that the object has been instantiatiated *)
 		   		    	   let instance_type = type_of_identifier instance sym_tbl in
 		   		    	   let instance_type_decl = find_class (ud_type_to_str instance_type) in
 		   		    	   (* Check that the mem name is a valid public member in class *)
-		   		    	   (find_pub_mem mem instance_type_decl, instance_type)
+		   		    	   (find_pub_mem mem instance_type_decl, instance_type, instance_type_decl)
 		   		in let (ty, _) = found_mem
 		   		(* Return format *)
 		   		(* (( typ, SClassMemAccess(string, string)), sym_tbl) *)
-		   		in ((ty, SClassMemAccess(mem, instance)), sym_tbl)
+		   		in ((ty, SClassMemAccess(mem, instance, find_mem_idx mem instance_type_decl)), sym_tbl)
 
 		in
 
