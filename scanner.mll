@@ -5,7 +5,7 @@ open LexUtils
 
 rule token =
     parse [' ' '\t']                       { token lexbuf }
-    | ['\n' '\r']+                         { NEWLINE }
+    | ['\n' '\r']+                         { Lexing.new_line lexbuf; NEWLINE }
     | '?'                                  { QUESTION }
     | ':'                                  { COLON }
     | "I"                                  { I }
