@@ -205,10 +205,11 @@ let check (classes, functions, globals) =
 		       let args'' = List.map (fun (a, b) -> a) args' in
 		   	   ((fd.rtyp, SFunctcall(fname, args'')), sym_tbl)
 		   	(* TODO: Need to account for ClassFunctcall and ClassMemAccess *)
-	   	  | ClassFunctcall(fname, (instance, args)) ->
+	   	  | ClassFunctcall(instance, (fname, args)) ->
 	   	    (* Check that the object has been instantiated *)
 	   	    (* Check that fname is a valid public function in class *)
-   		    let fd = find_pub_func fname (find_class (ud_type_to_str (type_of_identifier instance sym_tbl))) in
+            let cls = find_class (ud_type_to_str (type_of_identifier instance sym_tbl)) in
+   		    let fd = find_pub_func fname cls in
    		    let param_length = List.length fd.formals in
    		    (* Check that number of arguments is correct *)
    		    if List.length args != param_length then
@@ -224,7 +225,7 @@ let check (classes, functions, globals) =
 	        let args'' = List.map (fun (a, b) -> a) args' in
 	     	(* Return format *)
 	     	(* ( ( typ , SClassFunctcall( string, (string, sexpr list ) ) ), sym_tbl) *)
-		   	( ( fd.rtyp, SClassFunctcall (fname, (ud_type_to_str (type_of_identifier instance sym_tbl), args''))), sym_tbl)
+		   	( ( fd.rtyp, SClassFunctcall (instance, (cls.cname ^ "_" ^ fname, args''))), sym_tbl)
 	   	  | ClassMemAccess(mem, instance) ->
 	   		(* Check that the object has been instantiated *)
 	   		let instance_type = type_of_identifier instance sym_tbl in
@@ -283,14 +284,15 @@ let check (classes, functions, globals) =
 			     (* Check that the object has been instantiated *)
 			     let instance_type = type_of_identifier instance symbols in
 			     (* Check that mem name is a valid public member in class *)
-			   	 let found_mem = find_pub_mem mem (find_class (ud_type_to_str instance_type)) in
+                 let cls = find_class (ud_type_to_str instance_type) in
+			   	 let found_mem = find_pub_mem mem cls in
 			     let (lt, _) = found_mem in
 			     let ((rt, e'), _) = check_expr expr symbols in
 			     let err = "illegal assignment in expression" in
 			     let _ = check_assign lt rt err in
 			     (* Return type *)
 			     (* (SClassMemRassn(string, string, (typ, sx)), locals, symbols) *)
-			   	 (SClassMemRassn(mem, instance, (rt, e')), locals, symbols)
+			   	 (SClassMemRassn(mem, instance, find_mem_idx mem cls, (rt, e')), locals, symbols)
 		   | Instance (ud_type, name) ->
 		   		 (* Make sure ud_type is a valid class *)
 		   		 let _ = find_class (ud_type_to_str ud_type) in
@@ -522,27 +524,27 @@ let check (classes, functions, globals) =
 		   (* TODO: Need to account for ClassMemRassn and Instance *)
 		   | ClassMemRassn(mem, instance, expr) ->
 		   	  let _ = "can't find public member " ^ mem in
-		      let (found_mem, instance_type) =
+		      let (found_mem, instance_type, instance_type_decl) =
 		      	if instance = "DIS" then
 		      	         (* Invoking a member within the class *)
 		      			 (* Check both public and private members of class *)
 		      			 let instance_type_decl = calling_class in
 		      			 try
-		      			 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
+		      			 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname), instance_type_decl)
 		      			 with Failure(err) ->
-		      				(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
+		      				(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname), instance_type_decl)
 		      	else   (* Invoking a member outside the class *)
 		   		       (* Check that the object has been instantiatiated *)
 		   		       let instance_type = type_of_identifier instance symbols in
 		   		       let instance_type_decl = find_class (ud_type_to_str instance_type) in
 	   		    	   (* Check that the mem name is a valid public member in class *)
-	   		    	   (find_pub_mem mem instance_type_decl, instance_type)
+	   		    	   (find_pub_mem mem instance_type_decl, instance_type, instance_type_decl)
 	   		   in
 	   		   let ((rt, e'), _) = check_expr expr symbols in
 	   		   let err = "illegal assignment in expression" in
 	   		   let (lt, _) = found_mem in
  	   		   let _ = check_assign lt rt err in
-	   		   (SClassMemRassn(mem, instance, (rt, e')), locals, symbols)
+	   		   (SClassMemRassn(mem, instance, find_mem_idx mem instance_type_decl, (rt, e')), locals, symbols)
 		   | Instance (ud_type, name) ->
 		   		(* Make sure ud_type is a valid class *)
 		   		let found_class = find_class (ud_type_to_str ud_type) in
@@ -561,7 +563,7 @@ let check (classes, functions, globals) =
 		(* body of check_func *)
 		{ srtyp = func.rtyp;
 		  sfname = calling_class.cname ^ "_" ^ func.fname;
-		  sformals = (TypIdent calling_class.cname, "DIS")::func.formals;
+		  sformals = (Pointer (TypIdent calling_class.cname), "DIS")::func.formals;
 		  sbody = check_stmt_list func.body locals symbols
 	    }
 
@@ -780,27 +782,27 @@ let check (classes, functions, globals) =
 		   (* TODO: Need to account for ClassMemRassn and Instance *)
 		   | ClassMemRassn(mem, instance, expr) ->
 		   	  let _ = "can't find public member " ^ mem in
-		      let (found_mem, instance_type) =
+		      let (found_mem, instance_type, instance_type_decl) =
 		      	if instance = "DIS" then
 		      	         (* Invoking a member within the class *)
 		      			 (* Check both public and private members of class *)
 		      			 let instance_type_decl = calling_class in
 		      			 try
-		      			 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
+		      			 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname), instance_type_decl)
 		      			 with Failure(err) ->
-		      				(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
+		      				(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname), instance_type_decl)
 		      	else   (* Invoking a member outside the class *)
 		   		       (* Check that the object has been instantiatiated *)
 		   		       let instance_type = type_of_identifier instance symbols in
 		   		       let instance_type_decl = find_class (ud_type_to_str instance_type) in
 	   		    	   (* Check that the mem name is a valid public member in class *)
-	   		    	   (find_pub_mem mem instance_type_decl, instance_type)
+	   		    	   (find_pub_mem mem instance_type_decl, instance_type, instance_type_decl)
 	   		   in
 	   		   let ((rt, e'), _) = check_expr expr symbols in
 	   		   let err = "illegal assignment in expression" in
 	   		   let (lt, _) = found_mem in
  	   		   let _ = check_assign lt rt err in
-	   		   (SClassMemRassn(mem, instance, (rt, e')), locals, symbols)
+	   		   (SClassMemRassn(mem, instance, find_mem_idx mem instance_type_decl, (rt, e')), locals, symbols)
 		   | Instance (ud_type, name) ->
 		   		(* Make sure ud_type is a valid class *)
 		   		let found_class = find_class (ud_type_to_str ud_type) in
@@ -1031,27 +1033,27 @@ let check (classes, functions, globals) =
 		   (* TODO: Need to account for ClassMemRassn and Instance *)
 		   | ClassMemRassn(mem, instance, expr) ->
 		   	  let _ = "can't find public member " ^ mem in
-		      let (found_mem, instance_type) =
+		      let (found_mem, instance_type, instance_type_decl) =
 		      	if instance = "DIS" then
 		      	         (* Invoking a member within the class *)
 		      			 (* Check both public and private members of class *)
 		      			 let instance_type_decl = calling_class in
 		      			 try
-		      			 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
+		      			 	(find_pub_mem mem instance_type_decl, TypIdent(instance_type_decl.cname), instance_type_decl)
 		      			 with Failure(err) ->
-		      				(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname))
+		      				(find_priv_mem mem instance_type_decl, TypIdent(instance_type_decl.cname), instance_type_decl)
 		      	else   (* Invoking a member outside the class *)
 		   		       (* Check that the object has been instantiatiated *)
 		   		       let instance_type = type_of_identifier instance symbols in
 		   		       let instance_type_decl = find_class (ud_type_to_str instance_type) in
 	   		    	   (* Check that the mem name is a valid public member in class *)
-	   		    	   (find_pub_mem mem instance_type_decl, instance_type)
+	   		    	   (find_pub_mem mem instance_type_decl, instance_type, instance_type_decl)
 	   		   in
 	   		   let ((rt, e'), _) = check_expr expr symbols in
 	   		   let err = "illegal assignment in expression" in
 	   		   let (lt, _) = found_mem in
  	   		   let _ = check_assign lt rt err in
-	   		   (SClassMemRassn(mem, instance, (rt, e')), locals, symbols)
+	   		   (SClassMemRassn(mem, instance, find_mem_idx mem instance_type_decl, (rt, e')), locals, symbols)
 		   | Instance (ud_type, name) ->
 		   		(* Make sure ud_type is a valid class *)
 		   		let found_class = find_class (ud_type_to_str ud_type) in
@@ -1088,14 +1090,29 @@ let check (classes, functions, globals) =
 		let class_cons = List.map (fun f -> (class_decl, f)) class_decl.cons in
 		let class_des = List.map (fun f -> (class_decl, f)) class_decl.des in
 
-		{
+        let result_cons = ref (List.map check_cons class_cons) in
+        let result_des = ref (List.map check_des class_des) in
+
+        (* Generate default constructor and destructor *)
+        let () = result_cons := (
+            if List.length !result_cons = 0 then
+                [ [] ]
+            else !result_cons
+        ) in
+        let () = result_des := (
+            if List.length !result_des = 0 then
+                [ [] ]
+            else !result_des
+        ) in
+
+        {
 		  scname = class_decl.cname;
 		  spubmembers = class_decl.pubmembers;
 		  sprivmembers = class_decl.privmembers;
 		  spubfuncs = List.map check_class_func class_pubfuncs;
 		  sprivfuncs = List.map check_class_func class_privfuncs;
-		  scons = List.map check_cons class_cons;
-		  sdes = List.map check_des class_des
+		  scons = !result_cons;
+		  sdes = !result_des
 		}
     in
     {

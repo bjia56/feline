@@ -22,7 +22,7 @@ and sfunctcall = string * sexpr list
     | SBind of bind
     | SBindAssign of bind * sexpr
     | SAssign of string * sexpr
-    | SClassMemRassn of string * string * sexpr
+    | SClassMemRassn of string * string * int * sexpr (* member, instance, member index, sexpr *)
     | SInstance of bind
 
 type sfunc_decl = {

@@ -54,7 +54,7 @@ expr:
     | expr OR expr          { Binop($1, Or, $3) }
     | OPOZIT expr           { Unop(Not, $2) }
     | functcall             { Functcall($1) }
-    | IDENT IN functcall    { ClassFunctcall($1, $3) }
+    | IDENT IN functcall    { let id, args = $3 in ClassFunctcall(id, ($1, args)) }
     | IDENT IN IDENT        { ClassMemAccess($1, $3) }
     | IDENT IN DIS          { ClassMemAccess($1, "DIS")}
 
@@ -116,6 +116,7 @@ stmt:
     | expr NEWLINE                         { Expr($1) }
     | GIVEZ expr NEWLINE                   { Return($2) }
     | IDENT IN IDENT ITZ expr NEWLINE      { ClassMemRassn($1, $3, $5)}
+    | IDENT IN DIS ITZ expr NEWLINE      { ClassMemRassn($1, "DIS", $5)}
     | obj_inst NEWLINE                     { Instance($1)}
 
 functcall:

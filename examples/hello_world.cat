@@ -4,11 +4,13 @@ MESELF:
     DIS TEH VARBL var2 TEH INTEGR
 EVRYONE:
     DIS TEH INTEGR FUNC getVar
+        var IN DIS ITZ 123
         GIVEZ var IN DIS
     KTHXBAI
 KTHXBAI
 
 HAI ME TEH INTEGR FUNC MAIN
+    I HAS A kitten ITZ NU Cat
     MEOW WIT "Hello world!" KTHX
-    GIVEZ 125
+    GIVEZ getVar IN kitten WIT KTHX
 KTHXBAI
