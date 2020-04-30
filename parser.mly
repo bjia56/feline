@@ -3,7 +3,7 @@ open Ast
 open ParserUtils
 %}
 
-%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS DIS NU CONS DES WIT IN MEOW KTHXBAI KTHX QUESTION COLON EVRYONE MESELF NEWLINE
+%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS DIS NU DEL CONS DES WIT IN MEOW KTHXBAI KTHX QUESTION COLON EVRYONE MESELF NEWLINE
 %token INTEGR STRIN BUL NOL
 %token NOT_SAYM_AZ SAYM_AZ
 %token BIGGR_THAN SMALLR_THAN
@@ -115,13 +115,14 @@ stmt:
     | loc_vdecl NEWLINE                    { Bind($1) }
     | expr NEWLINE                         { Expr($1) }
     | GIVEZ expr NEWLINE                   { Return($2) }
-    | IDENT IN IDENT ITZ expr NEWLINE      { ClassMemRassn($1, $3, $5)}
-    | IDENT IN DIS ITZ expr NEWLINE      { ClassMemRassn($1, "DIS", $5)}
-    | obj_inst NEWLINE                     { Instance($1)}
+    | IDENT IN IDENT ITZ expr NEWLINE      { ClassMemRassn($1, $3, $5) }
+    | IDENT IN DIS ITZ expr NEWLINE        { ClassMemRassn($1, "DIS", $5) }
+    | obj_inst NEWLINE                     { Instance($1) }
+    | DEL IDENT NEWLINE                    { Dealloc($2) }
 
 functcall:
     | IDENT WIT functcall_args KTHX { ($1, $3) }
-    | DIS WIT functcall_args KTHX   { ("DIS", $3 )}
+    | DIS WIT functcall_args KTHX   { ("DIS", $3 ) }
 
 functcall_args:
     | /* nothing */              { [] }

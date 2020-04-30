@@ -1,0 +1,33 @@
+HAI ME TEH CLAS Cat
+MESELF:
+    DIS TEH VARBL var TEH INTEGR
+    DIS TEH VARBL var2 TEH INTEGR
+EVRYONE:
+    DIS TEH CONS
+        MEOW WIT "Constructor runs" KTHX
+        var IN DIS ITZ 1
+        var2 IN DIS ITZ 2
+    KTHXBAI
+
+    DIS TEH DES
+        MEOW WIT "Destructor runs" KTHX
+    KTHXBAI
+
+    DIS TEH INTEGR FUNC getVar
+        GIVEZ var IN DIS
+    KTHXBAI
+
+    DIS TEH INTEGR FUNC getVar2
+        GIVEZ var2 IN DIS
+    KTHXBAI
+KTHXBAI
+
+HAI ME TEH INTEGR FUNC MAIN
+    I HAS A kitten ITZ NU Cat
+
+    I HAS A VARBL number TEH INTEGR ITZ getVar IN kitten WIT KTHX PLUZ getVar2 IN kitten WIT KTHX
+
+    DEL kitten
+
+    GIVEZ number
+KTHXBAI

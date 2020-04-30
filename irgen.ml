@@ -325,28 +325,53 @@ let translate (mod_name : string) (p : sprogram) =
 
           (* Compute size of struct and cast to i32 *)
           let size_of_ret = n ^ "_sizeof" in
-          let size_of_ret_val = L.build_trunc (L.size_of ltype) i32_t size_of_ret builder in
+          let size_of_ret_val =
+            L.build_trunc (L.size_of ltype) i32_t size_of_ret builder
+          in
 
           (* Call malloc *)
           let malloc_ret = n ^ "_malloc" in
-          let malloc_ret_val = L.build_call malloc_func
-            [| size_of_ret_val |]
-            malloc_ret builder in
+          let malloc_ret_val =
+            L.build_call malloc_func [| size_of_ret_val |] malloc_ret builder
+          in
 
           (* Cast pointer and store *)
           let malloc_ptr = n ^ "_malloc_ptr" in
-          let inst = L.build_inttoptr malloc_ret_val pltype malloc_ptr builder in
+          let inst =
+            L.build_inttoptr malloc_ret_val pltype malloc_ptr builder
+          in
 
+          (* Call constructor and add to variable list *)
           let _ =
             match t with
             | TypIdent c ->
                 let cons_name = c ^ "_CONS" in
                 let cons, _ = StringMap.find cons_name function_decls in
                 let _ = L.build_call cons [| inst |] "" builder in
-                local_vars :=
-                  add_local builder !local_vars (t, n) inst
+                local_vars := add_local builder !local_vars (t, n) inst
             | _ -> raise (Failure "should not come here")
           in
+          builder
+      | SDealloc (t, inst) ->
+          let v = lookup inst in
+          let deref = inst ^ "_deref" in
+          let v_deref = L.build_load v deref builder in
+
+          (* Call destructor *)
+          let _ =
+            match t with
+            | TypIdent c ->
+                let des_name = c ^ "_DES" in
+                let des, _ = StringMap.find des_name function_decls in
+                L.build_call des [| v_deref |] "" builder
+            | _ -> raise (Failure "should not come here")
+          in
+
+          (* Cast pointer and store *)
+          let free_intptr = inst ^ "_free_intptr" in
+          let free_intptr_val = L.build_ptrtoint v_deref i32_t free_intptr builder in
+          (* Call free *)
+          let _ = L.build_call free_func [| free_intptr_val |] "" builder in
           builder
       | _ -> raise (Unimplemented "unimplemented statement")
       (*

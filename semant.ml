@@ -319,6 +319,10 @@ let check (classes, functions, globals) =
           let symbols = StringMap.add name ud_type symbols in
           let () = check_binds "local" locals in
           (SInstance (ud_type, name), locals, symbols)
+      | Dealloc instance ->
+          (* Check that the object has been instantiated *)
+          let t = type_of_identifier instance symbols in
+          (SDealloc(t, instance), locals, symbols)
     in
     (* body of check_func *)
     {
@@ -628,6 +632,10 @@ let check (classes, functions, globals) =
             let symbols = StringMap.add name ud_type symbols in
             let () = check_binds "local" locals in
             (SInstance (ud_type, name), locals, symbols)
+      | Dealloc instance ->
+          (* Check that the object has been instantiated *)
+          let t = type_of_identifier instance symbols in
+          (SDealloc(t, instance), locals, symbols)
     in
     (* body of check_func *)
     {
@@ -937,6 +945,10 @@ let check (classes, functions, globals) =
             let symbols = StringMap.add name ud_type symbols in
             let () = check_binds "local" locals in
             (SInstance (ud_type, name), locals, symbols)
+      | Dealloc instance ->
+          (* Check that the object has been instantiated *)
+          let t = type_of_identifier instance symbols in
+          (SDealloc(t, instance), locals, symbols)
     in
     check_stmt_list cons locals symbols
   in
@@ -1239,6 +1251,10 @@ let check (classes, functions, globals) =
             let symbols = StringMap.add name ud_type symbols in
             let () = check_binds "local" locals in
             (SInstance (ud_type, name), locals, symbols)
+      | Dealloc instance ->
+          (* Check that the object has been instantiated *)
+          let t = type_of_identifier instance symbols in
+          (SDealloc(t, instance), locals, symbols)
     in
     check_stmt_list des locals symbols
   in
