@@ -19,30 +19,45 @@ let translate (mod_name : string) (p : sprogram) =
   let class_lltype_map : L.lltype StringMap.t ref = ref StringMap.empty in
 
   (* Get types from the context *)
-  let i32_t = L.i32_type context
+  let i64_t = L.i64_type context
+  and i32_t = L.i32_type context
   and i8_t = L.i8_type context
   and i1_t = L.i1_type context
   and void_t = L.void_type context in
 
   (* Helper to convert A type to L type *)
   let rec ltype_of_typ (t : Ast.typ) =
-    match t with
-    | Ast.Int -> i32_t
-    | Ast.Bool -> i1_t
-    | Ast.Void -> void_t
-    | Ast.TypIdent s -> StringMap.find s !class_lltype_map
-    | Ast.Pointer t -> L.pointer_type (ltype_of_typ t)
-    | _ ->
-        raise
-          (Unimplemented
-             ("cannot convert unimplemented type " ^ AstUtils.string_of_typ t))
+    try
+      match t with
+      | Ast.Int -> i32_t
+      | Ast.Bool -> i1_t
+      | Ast.Void -> void_t
+      | Ast.TypIdent s -> L.pointer_type (StringMap.find s !class_lltype_map)
+      | _ ->
+          raise
+            (Unimplemented
+               ("cannot convert unimplemented type " ^ AstUtils.string_of_typ t))
+    with Not_found ->
+      raise (Failure ("error converting type " ^ AstUtils.string_of_typ t))
   in
 
   let init_of_typ (t : Ast.typ) =
     match t with
     | Ast.Int -> L.const_int (ltype_of_typ t) 0
     | Ast.Bool -> L.const_int (ltype_of_typ t) 0
+    | Ast.TypIdent _ -> L.const_null (ltype_of_typ t)
     | _ -> raise (Unimplemented "cannot init unimplemented type")
+  in
+
+  (* Preload classes *)
+  let _ =
+    let class_decl () cdecl =
+      (* Construct class type first *)
+      let name = cdecl.scname in
+      let ctype = L.named_struct_type context name in
+      class_lltype_map := StringMap.add name ctype !class_lltype_map
+    in
+    List.fold_left class_decl () p.sclasses
   in
 
   (* Construct global funcs *)
@@ -84,7 +99,7 @@ let translate (mod_name : string) (p : sprogram) =
           (fun (t, _) -> ltype_of_typ t)
           (List.rev_append (List.rev cdecl.spubmembers) cdecl.sprivmembers)
       in
-      let ctype = L.named_struct_type context name in
+      let ctype = StringMap.find name !class_lltype_map in
       let () = L.struct_set_body ctype (Array.of_list members) false in
 
       let () = class_lltype_map := StringMap.add name ctype !class_lltype_map in
@@ -107,7 +122,7 @@ let translate (mod_name : string) (p : sprogram) =
           {
             srtyp = Ast.Void;
             sfname = name ^ "_CONS";
-            sformals = [ (Pointer (TypIdent name), "DIS") ];
+            sformals = [ (TypIdent name, "DIS") ];
             sbody = consdecl;
           }
       in
@@ -116,7 +131,7 @@ let translate (mod_name : string) (p : sprogram) =
           {
             srtyp = Ast.Void;
             sfname = name ^ "_DES";
-            sformals = [ (Pointer (TypIdent name), "DIS") ];
+            sformals = [ (TypIdent name, "DIS") ];
             sbody = desdecl;
           }
       in
@@ -170,13 +185,20 @@ let translate (mod_name : string) (p : sprogram) =
     L.declare_function "printf" printf_t the_module
   in
 
+  (* Define malloc *)
+  let malloc_t : L.lltype = L.function_type i32_t [| i32_t |] in
+  let malloc_func : L.llvalue =
+    L.declare_function "malloc" malloc_t the_module
+  in
+
+  (* Define free *)
+  let free_t : L.lltype = L.function_type void_t [| i32_t |] in
+  let free_func : L.llvalue = L.declare_function "free" free_t the_module in
+
   (* Construct function body statements *)
   let build_function_body fdecl =
     let the_function, _ = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
-
-    let str_format_str = L.build_global_stringptr "%s\n" "sfmt" builder in
-    let int_format_str = L.build_global_stringptr "%d\n" "ifmt" builder in
 
     (* Construct function args as local vars *)
     let add_local builder m (t, n) p =
@@ -224,6 +246,8 @@ let translate (mod_name : string) (p : sprogram) =
           | Ast.Greater -> L.build_icmp L.Icmp.Sgt )
             e1' e2' "tmp" builder
       | SFunctcall ("MEOW", [ e ]) ->
+          let str_format_str = L.build_global_stringptr "%s\n" "sfmt" builder in
+          let int_format_str = L.build_global_stringptr "%d\n" "ifmt" builder in
           L.build_call printf_func
             [| str_format_str; build_expr builder e |]
             "printf" builder
@@ -309,20 +333,63 @@ let translate (mod_name : string) (p : sprogram) =
               builder
           in
           builder
-      | SInstance (t, n) -> (
-          let ltype = ltype_of_typ t in
-          let inst = L.build_alloca ltype n builder in
-          match t with
-          | TypIdent c ->
-              let cons_name = c ^ "_CONS" in
-              let cons, _ = StringMap.find cons_name function_decls in
-              let _ = L.build_call cons [| inst |] "" builder in
-              let () =
-                local_vars := add_local builder !local_vars (Pointer t, n) inst
-              in
-              builder
-          | _ -> raise (Failure "should not come here")
-          | _ -> raise (Unimplemented "unimplemented statement") )
+      | SInstance (t, n) ->
+          let pltype = ltype_of_typ t in
+          let ltype = L.element_type pltype in
+
+          (* Compute size of struct and cast to i32 *)
+          let size_of_ret = n ^ "_sizeof" in
+          let size_of_ret_val =
+            L.build_trunc (L.size_of ltype) i32_t size_of_ret builder
+          in
+
+          (* Call malloc *)
+          let malloc_ret = n ^ "_malloc" in
+          let malloc_ret_val =
+            L.build_call malloc_func [| size_of_ret_val |] malloc_ret builder
+          in
+
+          (* Cast pointer and store *)
+          let malloc_ptr = n ^ "_malloc_ptr" in
+          let inst =
+            L.build_inttoptr malloc_ret_val pltype malloc_ptr builder
+          in
+
+          (* Call constructor and add to variable list *)
+          let _ =
+            match t with
+            | TypIdent c ->
+                let cons_name = c ^ "_CONS" in
+                let cons, _ = StringMap.find cons_name function_decls in
+                let _ = L.build_call cons [| inst |] "" builder in
+                local_vars := add_local builder !local_vars (t, n) inst
+            | _ -> raise (Failure "should not come here")
+          in
+          builder
+      | SDealloc (t, inst) ->
+          let v = lookup inst in
+          let deref = inst ^ "_deref" in
+          let v_deref = L.build_load v deref builder in
+
+          (* Call destructor *)
+          let _ =
+            match t with
+            | TypIdent c ->
+                let des_name = c ^ "_DES" in
+                let des, _ = StringMap.find des_name function_decls in
+                L.build_call des [| v_deref |] "" builder
+            | _ -> raise (Failure "should not come here")
+          in
+
+          (* Cast pointer and store *)
+          let free_intptr = inst ^ "_free_intptr" in
+          let free_intptr_val =
+            L.build_ptrtoint v_deref i32_t free_intptr builder
+          in
+          (* Call free *)
+          let _ = L.build_call free_func [| free_intptr_val |] "" builder in
+          builder
+      | _ -> raise (Unimplemented "unimplemented statement")
       (*
             | SIf (predicate, then_stmt, else_stmt) ->
                 let bool_val = build_expr builder predicate in

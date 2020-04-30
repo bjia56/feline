@@ -27,6 +27,7 @@ type sstmt =
   | SAssign of string * sexpr
   | SClassMemRassn of string * string * int * sexpr (* member, instance, member index, sexpr *)
   | SInstance of bind
+  | SDealloc of bind
 
 type sfunc_decl = {
   srtyp : typ;

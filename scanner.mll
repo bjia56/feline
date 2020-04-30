@@ -13,7 +13,8 @@ rule token =
     | "A"                                  { A }
     | "VARBL"                              { VARBL }
     | "ITZ"                                { ITZ }
-    | "NU"                                 { NU  }
+    | "NU"                                 { NU }
+    | "DELET"                              { DELET }
     | "GIVEZ"                              { GIVEZ }
     | "PLS"                                { PLS }
     | "GIV"                                { GIV }
