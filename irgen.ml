@@ -19,7 +19,8 @@ let translate (mod_name : string) (p : sprogram) =
   let class_lltype_map : L.lltype StringMap.t ref = ref StringMap.empty in
 
   (* Get types from the context *)
-  let i32_t = L.i32_type context
+  let i64_t = L.i64_type context
+  and i32_t = L.i32_type context
   and i8_t = L.i8_type context
   and i1_t = L.i1_type context
   and void_t = L.void_type context in
@@ -30,8 +31,7 @@ let translate (mod_name : string) (p : sprogram) =
     | Ast.Int -> i32_t
     | Ast.Bool -> i1_t
     | Ast.Void -> void_t
-    | Ast.TypIdent s -> StringMap.find s !class_lltype_map
-    | Ast.Pointer t -> L.pointer_type (ltype_of_typ t)
+    | Ast.TypIdent s -> L.pointer_type (StringMap.find s !class_lltype_map)
     | _ ->
         raise
           (Unimplemented
@@ -107,7 +107,7 @@ let translate (mod_name : string) (p : sprogram) =
           {
             srtyp = Ast.Void;
             sfname = name ^ "_CONS";
-            sformals = [ (Pointer (TypIdent name), "DIS") ];
+            sformals = [ (TypIdent name, "DIS") ];
             sbody = consdecl;
           }
       in
@@ -116,7 +116,7 @@ let translate (mod_name : string) (p : sprogram) =
           {
             srtyp = Ast.Void;
             sfname = name ^ "_DES";
-            sformals = [ (Pointer (TypIdent name), "DIS") ];
+            sformals = [ (TypIdent name, "DIS") ];
             sbody = desdecl;
           }
       in
@@ -169,6 +169,16 @@ let translate (mod_name : string) (p : sprogram) =
   let printf_func : L.llvalue =
     L.declare_function "printf" printf_t the_module
   in
+
+  (* Define malloc *)
+  let malloc_t : L.lltype = L.function_type i32_t [| i32_t |] in
+  let malloc_func : L.llvalue =
+    L.declare_function "malloc" malloc_t the_module
+  in
+
+  (* Define free *)
+  let free_t : L.lltype = L.function_type void_t [| i32_t |] in
+  let free_func : L.llvalue = L.declare_function "free" free_t the_module in
 
   (* Construct function body statements *)
   let build_function_body fdecl =
@@ -309,20 +319,36 @@ let translate (mod_name : string) (p : sprogram) =
               builder
           in
           builder
-      | SInstance (t, n) -> (
-          let ltype = ltype_of_typ t in
-          let inst = L.build_alloca ltype n builder in
-          match t with
-          | TypIdent c ->
-              let cons_name = c ^ "_CONS" in
-              let cons, _ = StringMap.find cons_name function_decls in
-              let _ = L.build_call cons [| inst |] "" builder in
-              let () =
-                local_vars := add_local builder !local_vars (Pointer t, n) inst
-              in
-              builder
-          | _ -> raise (Failure "should not come here")
-          | _ -> raise (Unimplemented "unimplemented statement") )
+      | SInstance (t, n) ->
+          let pltype = ltype_of_typ t in
+          let ltype = L.element_type pltype in
+
+          (* Compute size of struct and cast to i32 *)
+          let size_of_ret = n ^ "_sizeof" in
+          let size_of_ret_val = L.build_trunc (L.size_of ltype) i32_t size_of_ret builder in
+
+          (* Call malloc *)
+          let malloc_ret = n ^ "_malloc" in
+          let malloc_ret_val = L.build_call malloc_func
+            [| size_of_ret_val |]
+            malloc_ret builder in
+
+          (* Cast pointer and store *)
+          let malloc_ptr = n ^ "_malloc_ptr" in
+          let inst = L.build_inttoptr malloc_ret_val pltype malloc_ptr builder in
+
+          let _ =
+            match t with
+            | TypIdent c ->
+                let cons_name = c ^ "_CONS" in
+                let cons, _ = StringMap.find cons_name function_decls in
+                let _ = L.build_call cons [| inst |] "" builder in
+                local_vars :=
+                  add_local builder !local_vars (t, n) inst
+            | _ -> raise (Failure "should not come here")
+          in
+          builder
+      | _ -> raise (Unimplemented "unimplemented statement")
       (*
             | SIf (predicate, then_stmt, else_stmt) ->
                 let bool_val = build_expr builder predicate in

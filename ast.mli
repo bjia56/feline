@@ -10,9 +10,6 @@ type typ =
   (* TODO: Implement Arrays *)
   | Exception of string
   | TypIdent of string
-  | Pointer of typ
-
-(* Only used internally for the DIS pointer in class methods *)
 
 type binop = Add | Sub | Mul | Div | Neq | Eq | Less | Greater | And | Or
 

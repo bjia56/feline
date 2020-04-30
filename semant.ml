@@ -633,7 +633,7 @@ let check (classes, functions, globals) =
     {
       srtyp = func.rtyp;
       sfname = calling_class.cname ^ "_" ^ func.fname;
-      sformals = (Pointer (TypIdent calling_class.cname), "DIS") :: func.formals;
+      sformals = (TypIdent calling_class.cname, "DIS") :: func.formals;
       sbody = check_stmt_list func.body locals symbols;
     }
   in
