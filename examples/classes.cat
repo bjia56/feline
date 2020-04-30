@@ -35,6 +35,6 @@ HAI ME TEH INTEGR FUNC MAIN
     I HAS A VARBL kitten TEH Cat ITZ getNewCat WIT KTHX
     I HAS A VARBL number TEH INTEGR ITZ addCat WIT kitten KTHX
 
-    DEL kitten
+    DELET kitten
     GIVEZ number
 KTHXBAI

@@ -14,7 +14,7 @@ rule token =
     | "VARBL"                              { VARBL }
     | "ITZ"                                { ITZ }
     | "NU"                                 { NU }
-    | "DEL"                                { DEL }
+    | "DELET"                              { DELET }
     | "GIVEZ"                              { GIVEZ }
     | "PLS"                                { PLS }
     | "GIV"                                { GIV }
