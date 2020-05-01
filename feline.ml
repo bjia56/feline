@@ -7,6 +7,7 @@ let ast_of_chan chan =
     raise (ParserUtils.SyntaxError (ParserUtils.syntax_error_string lexbuf))
 
 let ast_of_file file_name =
+  let () = ParserUtils.update_current_file file_name in
   let file_chan = open_in file_name in
   let ast = ast_of_chan file_chan in
   let () = close_in file_chan in

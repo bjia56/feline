@@ -24,6 +24,7 @@ type expr =
   | Binop of expr * binop * expr
   | Unop of unop * expr
   | Functcall of functcall
+  | NewInstance of string
   | ClassFunctcall of string * functcall
   | ClassMemAccess of string * string
 
@@ -38,7 +39,6 @@ type stmt =
   | BindAssign of bind * expr
   | Assign of string * expr
   | ClassMemRassn of string * string * expr
-  | Instance of bind
   | Dealloc of string
 
 type func_decl = {

@@ -210,6 +210,10 @@ let check (classes, functions, globals) =
             let args' = List.map2 check_call fd.formals args in
             let args'' = List.map (fun (a, b) -> a) args' in
             ((fd.rtyp, SFunctcall (fname, args'')), sym_tbl)
+      | NewInstance (cls_name) ->
+          (* Check if it is a valid class *)
+          let _ = find_class cls_name in
+          ((TypIdent cls_name, SNewInstance cls_name), sym_tbl)
       (* TODO: Need to account for ClassFunctcall and ClassMemAccess *)
       | ClassFunctcall (instance, (fname, args)) ->
           (* Check that the object has been instantiated *)
@@ -311,14 +315,6 @@ let check (classes, functions, globals) =
           ( SClassMemRassn (mem, instance, find_mem_idx mem cls, (rt, e')),
             locals,
             symbols )
-      | Instance (ud_type, name) ->
-          (* Make sure ud_type is a valid class *)
-          let _ = find_class (ud_type_to_str ud_type) in
-          (* Add bind to local list and to symbol table *)
-          let locals = locals @ [ (ud_type, name) ] in
-          let symbols = StringMap.add name ud_type symbols in
-          let () = check_binds "local" locals in
-          (SInstance (ud_type, name), locals, symbols)
       | Dealloc instance ->
           (* Check that the object has been instantiated *)
           let t = type_of_identifier instance symbols in
@@ -461,6 +457,10 @@ let check (classes, functions, globals) =
             let args' = List.map2 check_call fd.formals args in
             let args'' = List.map (fun (a, b) -> a) args' in
             ((fd.rtyp, SFunctcall (fname, args'')), sym_tbl)
+      | NewInstance (cls_name) ->
+          (* Check if it is a valid class *)
+          let _ = find_class cls_name in
+          ((TypIdent cls_name, SNewInstance cls_name), sym_tbl)
       (* TODO: Need to account for ClassFunctcall, ClassMemAccess *)
       | ClassFunctcall (fname, (instance, args)) ->
           let _ = "can't find public function " ^ fname in
@@ -616,22 +616,6 @@ let check (classes, functions, globals) =
               (mem, instance, find_mem_idx mem instance_type_decl, (rt, e')),
             locals,
             symbols )
-      | Instance (ud_type, name) ->
-          (* Make sure ud_type is a valid class *)
-          let found_class = find_class (ud_type_to_str ud_type) in
-          (* Make sure the class is not the current class
-             i.e. we can't have an instance of the class within the class decl *)
-          if found_class = calling_class then
-            raise
-              (Failure
-                 ( "can't instantiate object of type " ^ found_class.cname
-                 ^ "in declaration of " ^ found_class.cname ))
-          else
-            (* Add bind to local list and to symbol table *)
-            let locals = locals @ [ (ud_type, name) ] in
-            let symbols = StringMap.add name ud_type symbols in
-            let () = check_binds "local" locals in
-            (SInstance (ud_type, name), locals, symbols)
       | Dealloc instance ->
           (* Check that the object has been instantiated *)
           let t = type_of_identifier instance symbols in
@@ -772,6 +756,10 @@ let check (classes, functions, globals) =
             let args' = List.map2 check_call fd.formals args in
             let args'' = List.map (fun (a, b) -> a) args' in
             ((fd.rtyp, SFunctcall (fname, args'')), sym_tbl)
+      | NewInstance (cls_name) ->
+          (* Check if it is a valid class *)
+          let _ = find_class cls_name in
+          ((TypIdent cls_name, SNewInstance cls_name), sym_tbl)
       (* TODO: Need to account for ClassFunctcall, ClassMemAccess *)
       | ClassFunctcall (fname, (instance, args)) ->
           let _ = "can't find public function " ^ fname in
@@ -929,22 +917,6 @@ let check (classes, functions, globals) =
               (mem, instance, find_mem_idx mem instance_type_decl, (rt, e')),
             locals,
             symbols )
-      | Instance (ud_type, name) ->
-          (* Make sure ud_type is a valid class *)
-          let found_class = find_class (ud_type_to_str ud_type) in
-          (* Make sure the class is not the current class
-             i.e. we can't have an instance of the class within the class decl *)
-          if found_class = calling_class then
-            raise
-              (Failure
-                 ( "can't instantiate object of type " ^ found_class.cname
-                 ^ "in declaration of " ^ found_class.cname ))
-          else
-            (* Add bind to local list and to symbol table *)
-            let locals = locals @ [ (ud_type, name) ] in
-            let symbols = StringMap.add name ud_type symbols in
-            let () = check_binds "local" locals in
-            (SInstance (ud_type, name), locals, symbols)
       | Dealloc instance ->
           (* Check that the object has been instantiated *)
           let t = type_of_identifier instance symbols in
@@ -1078,6 +1050,10 @@ let check (classes, functions, globals) =
             let args' = List.map2 check_call fd.formals args in
             let args'' = List.map (fun (a, b) -> a) args' in
             ((fd.rtyp, SFunctcall (fname, args'')), sym_tbl)
+      | NewInstance (cls_name) ->
+          (* Check if it is a valid class *)
+          let _ = find_class cls_name in
+          ((TypIdent cls_name, SNewInstance cls_name), sym_tbl)
       (* TODO: Need to account for ClassFunctcall, ClassMemAccess *)
       | ClassFunctcall (fname, (instance, args)) ->
           let _ = "can't find public function " ^ fname in
@@ -1235,22 +1211,6 @@ let check (classes, functions, globals) =
               (mem, instance, find_mem_idx mem instance_type_decl, (rt, e')),
             locals,
             symbols )
-      | Instance (ud_type, name) ->
-          (* Make sure ud_type is a valid class *)
-          let found_class = find_class (ud_type_to_str ud_type) in
-          (* Make sure the class is not the current class
-             i.e. we can't have an instance of the class within the class decl *)
-          if found_class = calling_class then
-            raise
-              (Failure
-                 ( "can't instantiate object of type " ^ found_class.cname
-                 ^ "in declaration of " ^ found_class.cname ))
-          else
-            (* Add bind to local list and to symbol table *)
-            let locals = locals @ [ (ud_type, name) ] in
-            let symbols = StringMap.add name ud_type symbols in
-            let () = check_binds "local" locals in
-            (SInstance (ud_type, name), locals, symbols)
       | Dealloc instance ->
           (* Check that the object has been instantiated *)
           let t = type_of_identifier instance symbols in
