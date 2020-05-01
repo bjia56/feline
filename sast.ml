@@ -13,10 +13,11 @@ and sx =
   | SBinop of sexpr * binop * sexpr
   | SUnop of unop * sexpr
   | SFunctcall of sfunctcall
+  | SNewInstance of string
   | SClassFunctcall of string * sfunctcall
+  (* member, instance, member index *)
   | SClassMemAccess of string * string * int
 
-(* member, instance, member index *)
 and sfunctcall = string * sexpr list
 
 type sstmt =
@@ -25,8 +26,8 @@ type sstmt =
   | SBind of bind
   | SBindAssign of bind * sexpr
   | SAssign of string * sexpr
-  | SClassMemRassn of string * string * int * sexpr (* member, instance, member index, sexpr *)
-  | SInstance of bind
+  (* member, instance, member index, sexpr *)
+  | SClassMemRassn of string * string * int * sexpr
   | SDealloc of bind
 
 type sfunc_decl = {

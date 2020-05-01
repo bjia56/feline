@@ -56,7 +56,8 @@ expr:
     | functcall             { Functcall($1) }
     | IDENT IN functcall    { let id, args = $3 in ClassFunctcall(id, ($1, args)) }
     | IDENT IN IDENT        { ClassMemAccess($1, $3) }
-    | IDENT IN DIS          { ClassMemAccess($1, "DIS")}
+    | IDENT IN DIS          { ClassMemAccess($1, "DIS") }
+    | NU IDENT              { NewInstance($2) }
 
 typ:
     | INTEGR { Int }
@@ -101,9 +102,6 @@ glob_vdecl:
 loc_vdecl:
     | I HAS A VARBL IDENT TEH typ { ($7, $5) }
 
-obj_inst:
-    | I HAS A IDENT ITZ NU typ { ($7, $4) }
-
 stmt_list:
     | /* nothing */     { [] }
     | stmt stmt_list    { $1::$2 }
@@ -117,7 +115,6 @@ stmt:
     | GIVEZ expr NEWLINE                   { Return($2) }
     | IDENT IN IDENT ITZ expr NEWLINE      { ClassMemRassn($1, $3, $5) }
     | IDENT IN DIS ITZ expr NEWLINE        { ClassMemRassn($1, "DIS", $5) }
-    | obj_inst NEWLINE                     { Instance($1) }
     | DELET IDENT NEWLINE                  { Dealloc($2) }
 
 functcall:

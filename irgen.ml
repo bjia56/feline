@@ -261,6 +261,30 @@ let translate (mod_name : string) (p : sprogram) =
           else
             let result = f ^ "_result" in
             L.build_call fdef (Array.of_list llargs) result builder
+      | SNewInstance n ->
+          let pltype = ltype_of_typ (TypIdent n) in
+          let ltype = L.element_type pltype in
+          (* Compute size of struct and cast to i32 *)
+          let size_of_ret = n ^ "_sizeof" in
+          let size_of_ret_val =
+            L.build_trunc (L.size_of ltype) i32_t size_of_ret builder
+          in
+          (* Call malloc *)
+          let malloc_ret = n ^ "_malloc" in
+          let malloc_ret_val =
+            L.build_call malloc_func [| size_of_ret_val |] malloc_ret builder
+          in
+          (* Cast pointer and store *)
+          let malloc_ptr = n ^ "_malloc_ptr" in
+          let inst =
+            L.build_inttoptr malloc_ret_val pltype malloc_ptr builder
+          in
+          (* Call constructor *)
+          let cons_name = n ^ "_CONS" in
+          let cons, _ = StringMap.find cons_name function_decls in
+          let _ = L.build_call cons [| inst |] "" builder in
+          (* Return instance *)
+          inst
       | SClassFunctcall (inst, (f, args)) ->
           let v = lookup inst in
           let deref = inst ^ "_deref" in
@@ -331,39 +355,6 @@ let translate (mod_name : string) (p : sprogram) =
             L.build_store new_v
               (L.build_struct_gep v_deref idx access builder)
               builder
-          in
-          builder
-      | SInstance (t, n) ->
-          let pltype = ltype_of_typ t in
-          let ltype = L.element_type pltype in
-
-          (* Compute size of struct and cast to i32 *)
-          let size_of_ret = n ^ "_sizeof" in
-          let size_of_ret_val =
-            L.build_trunc (L.size_of ltype) i32_t size_of_ret builder
-          in
-
-          (* Call malloc *)
-          let malloc_ret = n ^ "_malloc" in
-          let malloc_ret_val =
-            L.build_call malloc_func [| size_of_ret_val |] malloc_ret builder
-          in
-
-          (* Cast pointer and store *)
-          let malloc_ptr = n ^ "_malloc_ptr" in
-          let inst =
-            L.build_inttoptr malloc_ret_val pltype malloc_ptr builder
-          in
-
-          (* Call constructor and add to variable list *)
-          let _ =
-            match t with
-            | TypIdent c ->
-                let cons_name = c ^ "_CONS" in
-                let cons, _ = StringMap.find cons_name function_decls in
-                let _ = L.build_call cons [| inst |] "" builder in
-                local_vars := add_local builder !local_vars (t, n) inst
-            | _ -> raise (Failure "should not come here")
           in
           builder
       | SDealloc (t, inst) ->
