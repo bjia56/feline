@@ -47,8 +47,8 @@ type sclass_decl = {
   sprivmembers : bind list;
   spubfuncs : sfunc_decl list;
   sprivfuncs : sfunc_decl list;
-  scons : scons_decl list;
-  sdes : sdes_decl list;
+  scons : scons_decl;
+  sdes : sdes_decl;
 }
 
 type sprogram = {

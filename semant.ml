@@ -1247,17 +1247,22 @@ let check (classes, functions, globals) =
     let class_cons = List.map (fun f -> (class_decl, f)) class_decl.cons in
     let class_des = List.map (fun f -> (class_decl, f)) class_decl.des in
 
-    let result_cons = ref (List.map check_cons class_cons) in
-    let result_des = ref (List.map check_des class_des) in
-
-    (* Generate default constructor and destructor *)
-    let () =
-      result_cons :=
-        if List.length !result_cons = 0 then [ [] ] else !result_cons
-    in
-    let () =
-      result_des := if List.length !result_des = 0 then [ [] ] else !result_des
-    in
+    let result_cons = (
+        if List.length class_cons > 1 then
+            raise (Failure ("class " ^ class_decl.cname ^ " has too many constructors defined"))
+        else if List.length class_cons = 0 then
+            []
+        else
+            check_cons (List.hd class_cons)
+    ) in
+    let result_des = (
+        if List.length class_des > 1 then
+            raise (Failure ("class " ^ class_decl.cname ^ " has too many destructors defined"))
+        else if List.length class_des = 0 then
+            []
+        else
+            check_des (List.hd class_des)
+    ) in
 
     {
       scname = class_decl.cname;
@@ -1265,8 +1270,8 @@ let check (classes, functions, globals) =
       sprivmembers = class_decl.privmembers;
       spubfuncs = List.map check_class_func class_pubfuncs;
       sprivfuncs = List.map check_class_func class_privfuncs;
-      scons = !result_cons;
-      sdes = !result_des;
+      scons = result_cons;
+      sdes = result_des;
     }
   in
   {

@@ -140,8 +140,8 @@ let translate (mod_name : string) (p : sprogram) =
         List.fold_left class_func_decl StringMap.empty cdecl.spubfuncs
       in
       let cfuncs = List.fold_left class_func_decl cfuncs cdecl.sprivfuncs in
-      let cfuncs = List.fold_left class_cons_decl cfuncs cdecl.scons in
-      let cfuncs = List.fold_left class_des_decl cfuncs cdecl.sdes in
+      let cfuncs = class_cons_decl cfuncs cdecl.scons in
+      let cfuncs = class_des_decl cfuncs cdecl.sdes in
 
       StringMap.add name (ctype, cfuncs, cdecl) m
     in
