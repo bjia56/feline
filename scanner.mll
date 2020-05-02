@@ -41,6 +41,9 @@ rule token =
     | "SMALLR" [' ' '\t']+ "THAN"          { SMALLR_THAN }
     | "AN"                                 { AN }
     | "OR"                                 { OR }
+    | "IF"                                 { IF }
+    | "ELS"                                { ELS }
+    | "WYL"                                { WYL }
     | "OPOZIT"                             { OPOZIT }
     | ['0'-'9']+ as lit                    { INTLIT(int_of_string lit) }
     | "YEZ"                                { BLIT(true)  }
