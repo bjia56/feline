@@ -29,6 +29,9 @@ type sstmt =
   (* member, instance, member index, sexpr *)
   | SClassMemRassn of string * string * int * sexpr
   | SDealloc of sexpr
+  | SIf of sexpr * sstmt list
+  | SIfElse of sexpr * sstmt list * sstmt list
+  | SWhile of sexpr * sstmt list
 
 type sfunc_decl = {
   srtyp : typ;

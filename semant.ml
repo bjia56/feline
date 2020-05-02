@@ -254,14 +254,14 @@ let check (classes, functions, globals) =
           ( (instance_type, SClassMemAccess (mem, instance, find_mem_idx mem c)),
             sym_tbl )
     in
-
-    (*
+   
 		let check_bool_expr e sym_tbl =
 		  let ((t, e'), m) = check_expr e sym_tbl in
 		  match t with
 		  | Bool -> (t, e')
 		  | _ -> raise (Failure ("expected Boolean expression"))
-		in *)
+		in 
+
     let rec check_stmt_list stmt_list locals symbols =
       match stmt_list with
       | [] -> []
@@ -328,6 +328,17 @@ let check (classes, functions, globals) =
                       non-object type")
           in
           (SDealloc (t, e'), locals, symbols)
+       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols), 
+       					   locals,
+       					   symbols)
+       | IfElse (e, sl1, sl2) -> (SIfElse(check_bool_expr e symbols, check_stmt_list sl1 locals symbols,
+       							 check_stmt_list sl2 locals symbols),
+       							 locals,
+       							 symbols)
+       | While (e, sl) -> (SWhile(check_bool_expr e symbols, check_stmt_list sl locals symbols),
+       							 locals,
+       							 symbols)
+
     in
     (* body of check_func *)
     {
@@ -546,12 +557,12 @@ let check (classes, functions, globals) =
             sym_tbl )
     in
 
-    (* let check_bool_expr e sym_tbl=
-         let ((t, e'), m) = check_expr e sym_tbl in
-         match t with
-         | Bool -> (t, e')
-         | _ -> raise (Failure ("expected Boolean expression"))
-       in *)
+    let check_bool_expr e sym_tbl =
+		  let ((t, e'), m) = check_expr e sym_tbl in
+		  match t with
+		  | Bool -> (t, e')
+		  | _ -> raise (Failure ("expected Boolean expression"))
+		in 
     let rec check_stmt_list stmt_list locals symbols =
       match stmt_list with
       | [] -> []
@@ -638,6 +649,16 @@ let check (classes, functions, globals) =
                       non-object type")
           in
           (SDealloc (t, e'), locals, symbols)
+       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols), 
+       					   locals,
+       					   symbols)
+       | IfElse (e, sl1, sl2) -> (SIfElse(check_bool_expr e symbols, check_stmt_list sl1 locals symbols,
+       							 check_stmt_list sl2 locals symbols),
+       							 locals,
+       							 symbols)
+       | While (e, sl) -> (SWhile(check_bool_expr e symbols, check_stmt_list sl locals symbols),
+       							 locals,
+       							 symbols)
     in
     (* body of check_func *)
     {
@@ -854,12 +875,12 @@ let check (classes, functions, globals) =
             sym_tbl )
     in
 
-    (* let check_bool_expr e sym_tbl=
+    let check_bool_expr e sym_tbl=
          let ((t, e'), m) = check_expr e sym_tbl in
          match t with
          | Bool -> (t, e')
          | _ -> raise (Failure ("expected Boolean expression"))
-       in *)
+       in
     let rec check_stmt_list stmt_list locals symbols =
       match stmt_list with
       | [] -> []
@@ -948,6 +969,16 @@ let check (classes, functions, globals) =
                       non-object type")
           in
           (SDealloc (t, e'), locals, symbols)
+       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols), 
+       					   locals,
+       					   symbols)
+       | IfElse (e, sl1, sl2) -> (SIfElse(check_bool_expr e symbols, check_stmt_list sl1 locals symbols,
+       							 check_stmt_list sl2 locals symbols),
+       							 locals,
+       							 symbols)
+       | While (e, sl) -> (SWhile(check_bool_expr e symbols, check_stmt_list sl locals symbols),
+       							 locals,
+       							 symbols)
     in
     check_stmt_list cons locals symbols
   in
@@ -1157,12 +1188,12 @@ let check (classes, functions, globals) =
             sym_tbl )
     in
 
-    (* let check_bool_expr e sym_tbl=
-         let ((t, e'), m) = check_expr e sym_tbl in
-         match t with
-         | Bool -> (t, e')
-         | _ -> raise (Failure ("expected Boolean expression"))
-       in *)
+    let check_bool_expr e sym_tbl =
+		  let ((t, e'), m) = check_expr e sym_tbl in
+		  match t with
+		  | Bool -> (t, e')
+		  | _ -> raise (Failure ("expected Boolean expression"))
+		in 
     let rec check_stmt_list stmt_list locals symbols =
       match stmt_list with
       | [] -> []
@@ -1251,6 +1282,16 @@ let check (classes, functions, globals) =
                       non-object type")
           in
           (SDealloc (t, e'), locals, symbols)
+       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols), 
+       					   locals,
+       					   symbols)
+       | IfElse (e, sl1, sl2) -> (SIfElse(check_bool_expr e symbols, check_stmt_list sl1 locals symbols,
+       							 check_stmt_list sl2 locals symbols),
+       							 locals,
+       							 symbols)
+       | While (e, sl) -> (SWhile(check_bool_expr e symbols, check_stmt_list sl locals symbols),
+       							 locals,
+       							 symbols)
     in
     check_stmt_list des locals symbols
   in

@@ -39,7 +39,10 @@ type stmt =
   | BindAssign of bind * expr
   | Assign of string * expr
   | ClassMemRassn of string * string * expr
-  | Dealloc of expr
+  | Dealloc of expr 
+  | If of expr * stmt list
+  | IfElse of expr * stmt list * stmt list
+  | While of expr * stmt list
 
 type func_decl = {
   rtyp : typ;
