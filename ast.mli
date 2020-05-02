@@ -40,6 +40,8 @@ type stmt =
   | Assign of string * expr
   | ClassMemRassn of string * string * expr
   | Dealloc of expr
+  | If of expr * stmt * stmt
+  | While of expr * stmt
 
 type func_decl = {
   rtyp : typ;

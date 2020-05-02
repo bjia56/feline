@@ -4,7 +4,7 @@ open ParserUtils
 %}
 
 %token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS DIS NU DELET CONS DES WIT IN MEOW KTHXBAI KTHX QUESTION COLON EVRYONE MESELF NEWLINE
-%token INTEGR STRIN BUL NOL
+%token INTEGR STRIN BUL NOL IF ELSE WHILE
 %token NOT_SAYM_AZ SAYM_AZ
 %token BIGGR_THAN SMALLR_THAN
 %token PLUZ MYNUZ TYMEZ DIVYD
@@ -113,6 +113,8 @@ stmt:
     | loc_vdecl NEWLINE                    { Bind($1) }
     | expr NEWLINE                         { Expr($1) }
     | GIVEZ expr NEWLINE                   { Return($2) }
+    | IF expr NEWLINE stmt ELSE stmt       { If($2, $4, $6) }
+    | WHILE expr stmt                      { While($2, $3) }    
     | IDENT IN IDENT ITZ expr NEWLINE      { ClassMemRassn($1, $3, $5) }
     | IDENT IN DIS ITZ expr NEWLINE        { ClassMemRassn($1, "DIS", $5) }
     | DELET expr NEWLINE                  { Dealloc($2) }
