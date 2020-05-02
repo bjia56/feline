@@ -1,13 +1,11 @@
 {
 open Parser
-open LexUtils
+open Utils
 }
 
 rule token =
     parse [' ' '\t' '\r']                  { token lexbuf }
     | ['\n']                               { Lexing.new_line lexbuf; NEWLINE }
-    | '?'                                  { QUESTION }
-    | ':'                                  { COLON }
     | "I"                                  { I }
     | "HAS"                                { HAS }
     | "A"                                  { A }
@@ -29,8 +27,8 @@ rule token =
     | "WIT"                                { WIT }
     | "IN"                                 { IN }
     | "KTHXBAI"                            { KTHXBAI }
-    | "EVRYONE"                            { EVRYONE }
-    | "MESELF"                             { MESELF }
+    | "EVRYONE:"                           { EVRYONE }
+    | "MESELF:"                            { MESELF }
     | "KTHX"                               { KTHX }
     | "PLUZ"                               { PLUZ }
     | "MYNUZ"                              { MYNUZ }
@@ -58,4 +56,7 @@ rule token =
     | "NOL"                                { NOL }
     | ['a'-'z' 'A'-'Z' '_']
       ['a'-'z' 'A'-'Z' '_' '0'-'9']* as id { IDENT(id) }
+    | ['a'-'z' 'A'-'Z' '_']
+      ['a'-'z' 'A'-'Z' '_' '0'-'9']*
+      '?' as id                            { IDENT_QUESTION(List.hd (String.split_on_char '?' id )) }
     | eof                                  { EOF }

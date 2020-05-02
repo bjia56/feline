@@ -51,8 +51,11 @@ type sclass_decl = {
   sdes : sdes_decl;
 }
 
-type sprogram = {
+type smodule = {
   sclasses : sclass_decl list;
   sfunctions : sfunc_decl list;
   sglobals : bind list;
+  sclass_imports : sclass_decl list;
+  sfunction_imports : sfunc_decl list;
+  sglobal_imports : bind list;
 }

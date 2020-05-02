@@ -63,7 +63,8 @@ type class_decl = {
   des : des_decl list; (* always public *)
 }
 
-type program = {
+type module_decl = {
+  imports : string list;
   classes : class_decl list;
   functions : func_decl list;
   globals : bind list;
