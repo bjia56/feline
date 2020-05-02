@@ -186,13 +186,13 @@ let translate (mod_name : string) (p : sprogram) =
   in
 
   (* Define malloc *)
-  let malloc_t : L.lltype = L.function_type i32_t [| i32_t |] in
+  let malloc_t : L.lltype = L.function_type i64_t [| i64_t |] in
   let malloc_func : L.llvalue =
     L.declare_function "malloc" malloc_t the_module
   in
 
   (* Define free *)
-  let free_t : L.lltype = L.function_type void_t [| i32_t |] in
+  let free_t : L.lltype = L.function_type void_t [| i64_t |] in
   let free_func : L.llvalue = L.declare_function "free" free_t the_module in
 
   (* Construct function body statements *)
@@ -265,14 +265,11 @@ let translate (mod_name : string) (p : sprogram) =
           let pltype = ltype_of_typ (TypIdent n) in
           let ltype = L.element_type pltype in
           (* Compute size of struct and cast to i32 *)
-          let size_of_ret = n ^ "_sizeof" in
-          let size_of_ret_val =
-            L.build_trunc (L.size_of ltype) i32_t size_of_ret builder
-          in
+          let size_of_val = L.size_of ltype in
           (* Call malloc *)
           let malloc_ret = n ^ "_malloc" in
           let malloc_ret_val =
-            L.build_call malloc_func [| size_of_ret_val |] malloc_ret builder
+            L.build_call malloc_func [| size_of_val |] malloc_ret builder
           in
           (* Cast pointer and store *)
           let malloc_ptr = n ^ "_malloc_ptr" in
@@ -375,7 +372,7 @@ let translate (mod_name : string) (p : sprogram) =
           (* Cast pointer and store *)
           let free_intptr = inst ^ "_free_intptr" in
           let free_intptr_val =
-            L.build_ptrtoint v_deref i32_t free_intptr builder
+            L.build_ptrtoint v_deref i64_t free_intptr builder
           in
           (* Call free *)
           let _ = L.build_call free_func [| free_intptr_val |] "" builder in
