@@ -354,26 +354,22 @@ let translate (mod_name : string) (p : sprogram) =
               builder
           in
           builder
-      | SDealloc (t, inst) ->
-          let v = lookup inst in
-          let deref = inst ^ "_deref" in
-          let v_deref = L.build_load v deref builder in
-
+      | SDealloc e ->
+          let t, _ = e in
+          let v = build_expr builder e in
           (* Call destructor *)
-          let _ =
+          let c =
             match t with
             | TypIdent c ->
                 let des_name = c ^ "_DES" in
                 let des, _ = StringMap.find des_name function_decls in
-                L.build_call des [| v_deref |] "" builder
+                L.build_call des [| v |] "" builder;
+                c
             | _ -> raise (Failure "should not come here")
           in
-
           (* Cast pointer and store *)
-          let free_intptr = inst ^ "_free_intptr" in
-          let free_intptr_val =
-            L.build_ptrtoint v_deref i64_t free_intptr builder
-          in
+          let free_intptr = c ^ "_free_intptr" in
+          let free_intptr_val = L.build_ptrtoint v i64_t free_intptr builder in
           (* Call free *)
           let _ = L.build_call free_func [| free_intptr_val |] "" builder in
           builder

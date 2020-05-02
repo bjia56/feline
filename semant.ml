@@ -210,7 +210,7 @@ let check (classes, functions, globals) =
             let args' = List.map2 check_call fd.formals args in
             let args'' = List.map (fun (a, b) -> a) args' in
             ((fd.rtyp, SFunctcall (fname, args'')), sym_tbl)
-      | NewInstance (cls_name) ->
+      | NewInstance cls_name ->
           (* Check if it is a valid class *)
           let _ = find_class cls_name in
           ((TypIdent cls_name, SNewInstance cls_name), sym_tbl)
@@ -315,10 +315,19 @@ let check (classes, functions, globals) =
           ( SClassMemRassn (mem, instance, find_mem_idx mem cls, (rt, e')),
             locals,
             symbols )
-      | Dealloc instance ->
-          (* Check that the object has been instantiated *)
-          let t = type_of_identifier instance symbols in
-          (SDealloc(t, instance), locals, symbols)
+      | Dealloc expr ->
+          (* Check that the expression is of the correct type *)
+          let (t, e'), _ = check_expr expr symbols in
+          let () =
+            match t with
+            | TypIdent _ -> ()
+            | _ ->
+                raise
+                  (Failure
+                     "cannot apply delete statement to expression of \
+                      non-object type")
+          in
+          (SDealloc (t, e'), locals, symbols)
     in
     (* body of check_func *)
     {
@@ -457,7 +466,7 @@ let check (classes, functions, globals) =
             let args' = List.map2 check_call fd.formals args in
             let args'' = List.map (fun (a, b) -> a) args' in
             ((fd.rtyp, SFunctcall (fname, args'')), sym_tbl)
-      | NewInstance (cls_name) ->
+      | NewInstance cls_name ->
           (* Check if it is a valid class *)
           let _ = find_class cls_name in
           ((TypIdent cls_name, SNewInstance cls_name), sym_tbl)
@@ -616,10 +625,19 @@ let check (classes, functions, globals) =
               (mem, instance, find_mem_idx mem instance_type_decl, (rt, e')),
             locals,
             symbols )
-      | Dealloc instance ->
-          (* Check that the object has been instantiated *)
-          let t = type_of_identifier instance symbols in
-          (SDealloc(t, instance), locals, symbols)
+      | Dealloc expr ->
+          (* Check that the expression is of the correct type *)
+          let (t, e'), _ = check_expr expr symbols in
+          let () =
+            match t with
+            | TypIdent _ -> ()
+            | _ ->
+                raise
+                  (Failure
+                     "cannot apply delete statement to expression of \
+                      non-object type")
+          in
+          (SDealloc (t, e'), locals, symbols)
     in
     (* body of check_func *)
     {
@@ -756,7 +774,7 @@ let check (classes, functions, globals) =
             let args' = List.map2 check_call fd.formals args in
             let args'' = List.map (fun (a, b) -> a) args' in
             ((fd.rtyp, SFunctcall (fname, args'')), sym_tbl)
-      | NewInstance (cls_name) ->
+      | NewInstance cls_name ->
           (* Check if it is a valid class *)
           let _ = find_class cls_name in
           ((TypIdent cls_name, SNewInstance cls_name), sym_tbl)
@@ -917,10 +935,19 @@ let check (classes, functions, globals) =
               (mem, instance, find_mem_idx mem instance_type_decl, (rt, e')),
             locals,
             symbols )
-      | Dealloc instance ->
-          (* Check that the object has been instantiated *)
-          let t = type_of_identifier instance symbols in
-          (SDealloc(t, instance), locals, symbols)
+      | Dealloc expr ->
+          (* Check that the expression is of the correct type *)
+          let (t, e'), _ = check_expr expr symbols in
+          let () =
+            match t with
+            | TypIdent _ -> ()
+            | _ ->
+                raise
+                  (Failure
+                     "cannot apply delete statement to expression of \
+                      non-object type")
+          in
+          (SDealloc (t, e'), locals, symbols)
     in
     check_stmt_list cons locals symbols
   in
@@ -1050,7 +1077,7 @@ let check (classes, functions, globals) =
             let args' = List.map2 check_call fd.formals args in
             let args'' = List.map (fun (a, b) -> a) args' in
             ((fd.rtyp, SFunctcall (fname, args'')), sym_tbl)
-      | NewInstance (cls_name) ->
+      | NewInstance cls_name ->
           (* Check if it is a valid class *)
           let _ = find_class cls_name in
           ((TypIdent cls_name, SNewInstance cls_name), sym_tbl)
@@ -1211,10 +1238,19 @@ let check (classes, functions, globals) =
               (mem, instance, find_mem_idx mem instance_type_decl, (rt, e')),
             locals,
             symbols )
-      | Dealloc instance ->
-          (* Check that the object has been instantiated *)
-          let t = type_of_identifier instance symbols in
-          (SDealloc(t, instance), locals, symbols)
+      | Dealloc expr ->
+          (* Check that the expression is of the correct type *)
+          let (t, e'), _ = check_expr expr symbols in
+          let () =
+            match t with
+            | TypIdent _ -> ()
+            | _ ->
+                raise
+                  (Failure
+                     "cannot apply delete statement to expression of \
+                      non-object type")
+          in
+          (SDealloc (t, e'), locals, symbols)
     in
     check_stmt_list des locals symbols
   in
@@ -1247,22 +1283,22 @@ let check (classes, functions, globals) =
     let class_cons = List.map (fun f -> (class_decl, f)) class_decl.cons in
     let class_des = List.map (fun f -> (class_decl, f)) class_decl.des in
 
-    let result_cons = (
-        if List.length class_cons > 1 then
-            raise (Failure ("class " ^ class_decl.cname ^ " has too many constructors defined"))
-        else if List.length class_cons = 0 then
-            []
-        else
-            check_cons (List.hd class_cons)
-    ) in
-    let result_des = (
-        if List.length class_des > 1 then
-            raise (Failure ("class " ^ class_decl.cname ^ " has too many destructors defined"))
-        else if List.length class_des = 0 then
-            []
-        else
-            check_des (List.hd class_des)
-    ) in
+    let result_cons =
+      if List.length class_cons > 1 then
+        raise
+          (Failure
+             ("class " ^ class_decl.cname ^ " has too many constructors defined"))
+      else if List.length class_cons = 0 then []
+      else check_cons (List.hd class_cons)
+    in
+    let result_des =
+      if List.length class_des > 1 then
+        raise
+          (Failure
+             ("class " ^ class_decl.cname ^ " has too many destructors defined"))
+      else if List.length class_des = 0 then []
+      else check_des (List.hd class_des)
+    in
 
     {
       scname = class_decl.cname;

@@ -39,7 +39,7 @@ type stmt =
   | BindAssign of bind * expr
   | Assign of string * expr
   | ClassMemRassn of string * string * expr
-  | Dealloc of string
+  | Dealloc of expr
 
 type func_decl = {
   rtyp : typ;

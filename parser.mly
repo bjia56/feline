@@ -115,7 +115,7 @@ stmt:
     | GIVEZ expr NEWLINE                   { Return($2) }
     | IDENT IN IDENT ITZ expr NEWLINE      { ClassMemRassn($1, $3, $5) }
     | IDENT IN DIS ITZ expr NEWLINE        { ClassMemRassn($1, "DIS", $5) }
-    | DELET IDENT NEWLINE                  { Dealloc($2) }
+    | DELET expr NEWLINE                  { Dealloc($2) }
 
 functcall:
     | IDENT WIT functcall_args KTHX { ($1, $3) }
