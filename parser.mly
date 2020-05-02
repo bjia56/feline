@@ -108,16 +108,16 @@ stmt_list:
     | NEWLINE stmt_list { $2 }
 
 stmt:
-    | loc_vdecl ITZ expr NEWLINE           { BindAssign($1, $3) }
-    | IDENT ITZ expr NEWLINE               { Assign($1, $3) }
-    | loc_vdecl NEWLINE                    { Bind($1) }
-    | expr NEWLINE                         { Expr($1) }
-    | GIVEZ expr NEWLINE                   { Return($2) }
-    | IF expr NEWLINE stmt ELSE stmt       { If($2, $4, $6) }
-    | WHILE expr stmt                      { While($2, $3) }    
-    | IDENT IN IDENT ITZ expr NEWLINE      { ClassMemRassn($1, $3, $5) }
-    | IDENT IN DIS ITZ expr NEWLINE        { ClassMemRassn($1, "DIS", $5) }
-    | DELET expr NEWLINE                  { Dealloc($2) }
+    | loc_vdecl ITZ expr NEWLINE                     { BindAssign($1, $3) }
+    | IDENT ITZ expr NEWLINE                         { Assign($1, $3) }
+    | loc_vdecl NEWLINE                              { Bind($1) }
+    | expr NEWLINE                                   { Expr($1) }
+    | GIVEZ expr NEWLINE                             { Return($2) }
+    | IF expr NEWLINE stmt_list ELSE stmt_list       { If($2, $4, $6) }
+    | WHILE expr stmt_list                           { While($2, $3) }    
+    | IDENT IN IDENT ITZ expr NEWLINE                { ClassMemRassn($1, $3, $5) }
+    | IDENT IN DIS ITZ expr NEWLINE                  { ClassMemRassn($1, "DIS", $5) }
+    | DELET expr NEWLINE                             { Dealloc($2) }
 
 functcall:
     | IDENT WIT functcall_args KTHX { ($1, $3) }
