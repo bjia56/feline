@@ -47,12 +47,15 @@ let rec check_module (all_modules : module_decl StringMap.t)
     (* Check for duplicate imports *)
     check_import_dups "module" m.imports;
 
+    (* Inject globalBuiltins module *)
+    let mimports = if name <> "globalBuiltins" then "globalBuiltins" :: m.imports else m.imports in
+
     (* Check all imports are valid *)
-    let _ = List.map check_valid_import m.imports in
+    let _ = List.map check_valid_import mimports in
 
     (* Collect all fields declared in imports *)
     let c, f, g, sc =
-      List.fold_left collect_imports ([], [], [], []) m.imports
+      List.fold_left collect_imports ([], [], [], []) mimports
     in
 
     (* Check dups in imports *)
@@ -182,7 +185,9 @@ let rec check_module (all_modules : module_decl StringMap.t)
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
     let check_assign lvaluet rvaluet err =
-      if lvaluet = rvaluet then lvaluet else raise (Failure err)
+        if lvaluet = rvaluet then lvaluet
+      else
+        raise (Failure err)
     in
 
     (* Build local symbol table of variables for this function *)
@@ -244,7 +249,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
       | NullLit -> ((Null, SNullLit), sym_tbl)
       | IntLit l -> ((Int, SIntLit l), sym_tbl)
       | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
-      | StrLit l -> ((String, SStrLit l), sym_tbl)
+      | StrLit l -> ((TypIdent "STRIN", SStrLit l), sym_tbl)
       | Ident var -> ((type_of_identifier var sym_tbl, SIdent var), sym_tbl)
       | Binop (e1, op, e2) ->
           let (t1, e1'), sym_tbl = check_expr e1 sym_tbl in
@@ -370,7 +375,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           and (rt, e'), _ = check_expr e symbols in
           let err = "illegal assignment in expression" in
           let _ = check_assign lt rt err in
-          (SAssign (var, (rt, e')), locals, symbols)
+          (SAssign ((lt, var), (rt, e')), locals, symbols)
       | Return e ->
           let (t, e'), _ = check_expr e symbols in
           if t = func.rtyp then (SReturn (t, e'), locals, symbols)
@@ -388,7 +393,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let _ = check_assign lt rt err in
           (* Return type *)
           (* (SClassMemRassn(string, string, (typ, sx)), locals, symbols) *)
-          ( SClassMemRassn (mem, instance, find_mem_idx mem cls, (rt, e')),
+          ( SClassMemRassn ((lt, mem), instance, find_mem_idx mem cls, (rt, e')),
             locals,
             symbols )
       | Dealloc expr ->
@@ -422,7 +427,8 @@ let rec check_module (all_modules : module_decl StringMap.t)
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
     let check_assign lvaluet rvaluet err =
-      if lvaluet = rvaluet then lvaluet else raise (Failure err)
+      if lvaluet = rvaluet then lvaluet
+        else raise (Failure err)
     in
 
     (* Build local symbol table of variables for this function *)
@@ -500,7 +506,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
       | NullLit -> ((Null, SNullLit), sym_tbl)
       | IntLit l -> ((Int, SIntLit l), sym_tbl)
       | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
-      | StrLit l -> ((String, SStrLit l), sym_tbl)
+      | StrLit l -> ((TypIdent "STRIN", SStrLit l), sym_tbl)
       | Ident var -> ((type_of_identifier var sym_tbl, SIdent var), sym_tbl)
       | Binop (e1, op, e2) ->
           let (t1, e1'), sym_tbl = check_expr e1 sym_tbl in
@@ -660,7 +666,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           and (rt, e'), _ = check_expr e symbols in
           let err = "illegal assignment in expression" in
           let _ = check_assign lt rt err in
-          (SAssign (var, (rt, e')), locals, symbols)
+          (SAssign ((lt, var), (rt, e')), locals, symbols)
       | Return e ->
           let (t, e'), _ = check_expr e symbols in
           if t = func.rtyp then (SReturn (t, e'), locals, symbols)
@@ -698,7 +704,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let lt, _ = found_mem in
           let _ = check_assign lt rt err in
           ( SClassMemRassn
-              (mem, instance, find_mem_idx mem instance_type_decl, (rt, e')),
+              ((lt, mem), instance, find_mem_idx mem instance_type_decl, (rt, e')),
             locals,
             symbols )
       | Dealloc expr ->
@@ -731,7 +737,9 @@ let rec check_module (all_modules : module_decl StringMap.t)
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
     let check_assign lvaluet rvaluet err =
-      if lvaluet = rvaluet then lvaluet else raise (Failure err)
+      if lvaluet = rvaluet then lvaluet
+      else
+        raise (Failure err)
     in
 
     (* Build local symbol table of variables for this function *)
@@ -809,7 +817,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
       | NullLit -> ((Null, SNullLit), sym_tbl)
       | IntLit l -> ((Int, SIntLit l), sym_tbl)
       | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
-      | StrLit l -> ((String, SStrLit l), sym_tbl)
+      | StrLit l -> ((TypIdent "STRIN", SStrLit l), sym_tbl)
       | Ident var -> ((type_of_identifier var sym_tbl, SIdent var), sym_tbl)
       | Binop (e1, op, e2) ->
           let (t1, e1'), sym_tbl = check_expr e1 sym_tbl in
@@ -969,7 +977,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           and (rt, e'), _ = check_expr e symbols in
           let err = "illegal assignment in expression" in
           let _ = check_assign lt rt err in
-          (SAssign (var, (rt, e')), locals, symbols)
+          (SAssign ((lt, var), (rt, e')), locals, symbols)
       (* | Return e ->
          let ((t, e'), _) = check_expr e symbols in
          if t = func.rtyp then (SReturn (t, e'), locals, symbols)
@@ -1009,7 +1017,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let lt, _ = found_mem in
           let _ = check_assign lt rt err in
           ( SClassMemRassn
-              (mem, instance, find_mem_idx mem instance_type_decl, (rt, e')),
+              ((lt, mem), instance, find_mem_idx mem instance_type_decl, (rt, e')),
             locals,
             symbols )
       | Dealloc expr ->
@@ -1035,7 +1043,9 @@ let rec check_module (all_modules : module_decl StringMap.t)
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
     let check_assign lvaluet rvaluet err =
-      if lvaluet = rvaluet then lvaluet else raise (Failure err)
+      if lvaluet = rvaluet then lvaluet
+      else
+        raise (Failure err)
     in
 
     (* Build local symbol table of variables for this function *)
@@ -1113,7 +1123,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
       | NullLit -> ((Null, SNullLit), sym_tbl)
       | IntLit l -> ((Int, SIntLit l), sym_tbl)
       | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
-      | StrLit l -> ((String, SStrLit l), sym_tbl)
+      | StrLit l -> ((TypIdent "STRIN", SStrLit l), sym_tbl)
       | Ident var -> ((type_of_identifier var sym_tbl, SIdent var), sym_tbl)
       | Binop (e1, op, e2) ->
           let (t1, e1'), sym_tbl = check_expr e1 sym_tbl in
@@ -1273,7 +1283,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           and (rt, e'), _ = check_expr e symbols in
           let err = "illegal assignment in expression" in
           let _ = check_assign lt rt err in
-          (SAssign (var, (rt, e')), locals, symbols)
+          (SAssign ((lt, var), (rt, e')), locals, symbols)
       (* | Return e ->
          let ((t, e'), _) = check_expr e symbols in
          if t = func.rtyp then (SReturn (t, e'), locals, symbols)
@@ -1313,7 +1323,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let lt, _ = found_mem in
           let _ = check_assign lt rt err in
           ( SClassMemRassn
-              (mem, instance, find_mem_idx mem instance_type_decl, (rt, e')),
+              ((lt, mem), instance, find_mem_idx mem instance_type_decl, (rt, e')),
             locals,
             symbols )
       | Dealloc expr ->
@@ -1393,7 +1403,8 @@ let rec check_module (all_modules : module_decl StringMap.t)
     sclass_imports = simport_classes;
     sfunction_imports =
       List.map
-        (fun f -> { srtyp = f.rtyp; sfname = f.fname; sformals = f.formals; sbody=[] })
+        (fun f ->
+          { srtyp = f.rtyp; sfname = f.fname; sformals = f.formals; sbody = [] })
         import_functions;
     sglobal_imports = import_globals;
   }

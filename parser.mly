@@ -3,7 +3,7 @@ open Ast
 %}
 
 %token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS DIS NU DELET CONS DES WIT IN MEOW KTHXBAI KTHX EVRYONE MESELF NEWLINE
-%token INTEGR STRIN BUL NOL
+%token INTEGR BUL NOL
 %token NOT_SAYM_AZ SAYM_AZ
 %token BIGGR_THAN SMALLR_THAN
 %token PLUZ MYNUZ TYMEZ DIVYD
@@ -72,7 +72,6 @@ expr:
 
 typ:
     | INTEGR { Int }
-    | STRIN  { String }
     | IDENT  { TypIdent($1) }
     | BUL    { Bool }
 

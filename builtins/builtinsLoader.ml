@@ -1,14 +1,10 @@
 module StringMap = Map.Make (String)
 
-let builtins_list = [ STDIO.module_signature ]
+let builtins_list = [ STDIO.module_signature; GlobalBuiltins.module_signature ]
 
 let builtin_modules =
-  let parser_builder m (name, contents) =
-    let lex = Lexing.from_string contents in
-    let ast = Parser.module_decl Scanner.token lex in
-    StringMap.add name ast m
-  in
-  List.fold_left parser_builder StringMap.empty builtins_list
+  let visit_module m (name, ast) = StringMap.add name ast m in
+  List.fold_left visit_module StringMap.empty builtins_list
 
 let with_builtins (modules : Ast.module_decl StringMap.t) :
     Ast.module_decl StringMap.t =

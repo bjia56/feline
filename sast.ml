@@ -25,9 +25,9 @@ type sstmt =
   | SReturn of sexpr
   | SBind of bind
   | SBindAssign of bind * sexpr
-  | SAssign of string * sexpr
+  | SAssign of bind * sexpr
   (* member, instance, member index, sexpr *)
-  | SClassMemRassn of string * string * int * sexpr
+  | SClassMemRassn of bind * string * int * sexpr
   | SDealloc of sexpr
 
 type sfunc_decl = {

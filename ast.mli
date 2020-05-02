@@ -4,12 +4,13 @@ type typ =
   | Null
   | Void
   | Int
-  | String
   | Bool
   (* | Array of typ * int  *)
   (* TODO: Implement Arrays *)
   | Exception of string
   | TypIdent of string
+  (* Used internally *)
+  | CStringPtr
 
 type binop = Add | Sub | Mul | Div | Neq | Eq | Less | Greater | And | Or
 

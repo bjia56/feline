@@ -7,10 +7,10 @@ exception Unimplemented of string
 
 let main_fdecl =
   {
-    srtyp = Ast.Int;
+    srtyp = Int;
     sfname = "main";
     sformals = [];
-    sbody = [ SReturn (Ast.Int, SFunctcall ("MAIN", [])) ];
+    sbody = [ SReturn (Int, SFunctcall ("MAIN", [])) ];
   }
 
 let translate (mod_name : string) (p : smodule) =
@@ -26,14 +26,14 @@ let translate (mod_name : string) (p : smodule) =
   and void_t = L.void_type context in
 
   (* Helper to convert A type to L type *)
-  let rec ltype_of_typ (t : Ast.typ) =
+  let rec ltype_of_typ (t : typ) =
     try
       match t with
-      | Ast.Int -> i32_t
-      | Ast.Bool -> i1_t
-      | Ast.String -> L.pointer_type i8_t
-      | Ast.Void -> void_t
-      | Ast.TypIdent s -> L.pointer_type (StringMap.find s !class_lltype_map)
+      | Int -> i32_t
+      | Bool -> i1_t
+      | Void -> void_t
+      | TypIdent s -> L.pointer_type (StringMap.find s !class_lltype_map)
+      | CStringPtr -> L.pointer_type i8_t
       | _ ->
           raise
             (Unimplemented
@@ -42,11 +42,11 @@ let translate (mod_name : string) (p : smodule) =
       raise (Failure ("error converting type " ^ Utils.string_of_typ t))
   in
 
-  let init_of_typ (t : Ast.typ) =
+  let init_of_typ (t : typ) =
     match t with
-    | Ast.Int -> L.const_int (ltype_of_typ t) 0
-    | Ast.Bool -> L.const_int (ltype_of_typ t) 0
-    | Ast.TypIdent _ -> L.const_null (ltype_of_typ t)
+    | Int -> L.const_int (ltype_of_typ t) 0
+    | Bool -> L.const_int (ltype_of_typ t) 0
+    | TypIdent _ -> L.const_null (ltype_of_typ t)
     | _ -> raise (Unimplemented "cannot init unimplemented type")
   in
 
@@ -70,7 +70,7 @@ let translate (mod_name : string) (p : smodule) =
           let () = has_main := true in
           (* Construct wrapper around "MAIN" *)
           let ftype =
-            L.function_type (ltype_of_typ Ast.Int) (Array.of_list [])
+            L.function_type (ltype_of_typ Int) (Array.of_list [])
           in
           StringMap.add main_fdecl.sfname
             (L.define_function main_fdecl.sfname ftype the_module, main_fdecl)
@@ -128,7 +128,7 @@ let translate (mod_name : string) (p : smodule) =
       let class_cons_decl m consdecl =
         class_func_decl m
           {
-            srtyp = Ast.Void;
+            srtyp = Void;
             sfname = name ^ "_CONS";
             sformals = [ (TypIdent name, "DIS") ];
             sbody = consdecl;
@@ -137,7 +137,7 @@ let translate (mod_name : string) (p : smodule) =
       let class_des_decl m desdecl =
         class_func_decl m
           {
-            srtyp = Ast.Void;
+            srtyp = Void;
             sfname = name ^ "_DES";
             sformals = [ (TypIdent name, "DIS") ];
             sbody = desdecl;
@@ -218,6 +218,10 @@ let translate (mod_name : string) (p : smodule) =
   let free_t : L.lltype = L.function_type void_t [| i64_t |] in
   let free_func : L.llvalue = L.declare_function "free" free_t the_module in
 
+  (* Define STRIN conversion function *)
+  let strin_from_cstring_t : L.lltype = L.function_type void_t [| ltype_of_typ (TypIdent "STRIN"); L.pointer_type i8_t |] in
+  let strin_from_cstring_func : L.llvalue = L.declare_function "STRIN_from_cstring" strin_from_cstring_t the_module in
+
   (* Define imported functions *)
   let _ =
     let declare_imported_func f = L.declare_function f.fname in
@@ -258,28 +262,32 @@ let translate (mod_name : string) (p : smodule) =
       match e with
       | SIntLit i -> L.const_int i32_t i
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
-      | SStrLit s -> L.build_global_stringptr s "tmp_str_lit" builder
+      | SStrLit s ->
+          let const_str = L.build_global_stringptr s "str_lit" builder in
+          let new_strin = build_expr builder (TypIdent "STRIN", SNewInstance "STRIN") in
+          let _ = L.build_call strin_from_cstring_func [| new_strin; const_str |] "" builder in
+          new_strin
       | SIdent s -> L.build_load (lookup s) s builder
       | SBinop (e1, op, e2) ->
           let e1' = build_expr builder e1 and e2' = build_expr builder e2 in
           ( match op with
-          | Ast.Add -> L.build_add
-          | Ast.Sub -> L.build_sub
-          | Ast.Mul -> L.build_mul
-          | Ast.Div -> L.build_sdiv
-          | Ast.And -> L.build_and
-          | Ast.Or -> L.build_or
-          | Ast.Eq -> L.build_icmp L.Icmp.Eq
-          | Ast.Neq -> L.build_icmp L.Icmp.Ne
-          | Ast.Less -> L.build_icmp L.Icmp.Slt
-          | Ast.Greater -> L.build_icmp L.Icmp.Sgt )
+          | Add -> L.build_add
+          | Sub -> L.build_sub
+          | Mul -> L.build_mul
+          | Div -> L.build_sdiv
+          | And -> L.build_and
+          | Or -> L.build_or
+          | Eq -> L.build_icmp L.Icmp.Eq
+          | Neq -> L.build_icmp L.Icmp.Ne
+          | Less -> L.build_icmp L.Icmp.Slt
+          | Greater -> L.build_icmp L.Icmp.Sgt )
             e1' e2' "tmp" builder
       | SFunctcall (f, args) ->
           let fdef, fdecl = StringMap.find f function_decls in
           let llargs =
             List.rev (List.map (build_expr builder) (List.rev args))
           in
-          if fdecl.srtyp = Ast.Void then
+          if fdecl.srtyp = Void then
             L.build_call fdef (Array.of_list llargs) "" builder
           else
             let result = f ^ "_result" in
@@ -313,7 +321,7 @@ let translate (mod_name : string) (p : smodule) =
           let llargs =
             List.rev (List.map (build_expr builder) (List.rev args))
           in
-          if fdecl.srtyp = Ast.Void then
+          if fdecl.srtyp = Void then
             L.build_call fdef (Array.of_list (v_deref :: llargs)) "" builder
           else
             let result = f ^ "_result" in
@@ -356,16 +364,17 @@ let translate (mod_name : string) (p : smodule) =
           in
           builder
       | SBindAssign (b, e) ->
-          let t, _ = b in
           let () =
             local_vars := add_local builder !local_vars b (build_expr builder e)
           in
           builder
-      | SAssign (s, e) ->
-          let v = lookup s in
+      | SAssign (b, e) ->
+          let _, n = b in
+          let v = lookup n in
           let _ = L.build_store (build_expr builder e) v builder in
           builder
-      | SClassMemRassn (mem, inst, idx, e) ->
+      | SClassMemRassn (b, inst, idx, e) ->
+          let _, mem = b in
           let v = lookup inst in
           let deref = inst ^ "_deref" in
           let v_deref = L.build_load v deref builder in
@@ -435,7 +444,7 @@ let translate (mod_name : string) (p : smodule) =
     let func_builder = List.fold_left build_stmt builder fdecl.sbody in
 
     (* Add a return if the last block falls off the end *)
-    if fdecl.srtyp = Ast.Void then add_terminal func_builder L.build_ret_void
+    if fdecl.srtyp = Void then add_terminal func_builder L.build_ret_void
     else add_terminal func_builder (L.build_ret (L.const_int i32_t 0))
   in
 

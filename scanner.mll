@@ -51,7 +51,6 @@ rule token =
         "\\t"
       )* '"' as str                        { STRLIT(sanitize_str_lit str) }
     | "INTEGR"                             { INTEGR }
-    | "STRIN"                              { STRIN }
     | "BUL"                                { BUL }
     | "NOL"                                { NOL }
     | ['a'-'z' 'A'-'Z' '_']

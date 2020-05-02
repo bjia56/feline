@@ -38,7 +38,7 @@ KTHXBAI
 
         let pubmember_typ, pubmember_name = List.hd clas.pubmembers in
         let () = assert ("baz" = pubmember_name) in
-        let () = assert (Ast.String = pubmember_typ) in
+        let () = assert (Ast.TypIdent "STRIN" = pubmember_typ) in
         ()
     ) with
     | Parsing.Parse_error -> failwith (Utils.syntax_error_string lex)

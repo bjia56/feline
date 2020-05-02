@@ -1,6 +1,25 @@
-let contents = "
-HAI ME TEH FUNC MEOW WIT x TEH STRIN
-KTHXBAI
-"
+open Ast
 
-let module_signature = ("STDIO", contents)
+let ast =
+  {
+    imports = [];
+    classes = [];
+    functions =
+      [
+        {
+          rtyp = Void;
+          fname = "MEOW";
+          formals = [ (TypIdent "STRIN", "x") ];
+          body = [];
+        };
+        {
+          rtyp = TypIdent "STRIN";
+          fname = "NOM";
+          formals = [];
+          body = [ Return (StrLit "") ];
+        };
+      ];
+    globals = [];
+  }
+
+let module_signature = ("STDIO", ast)
