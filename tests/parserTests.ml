@@ -23,7 +23,7 @@ KTHXBAI
 " in
     let lex = Lexing.from_string raw_class in
     try (
-        let ast = Parser.program Scanner.token lex in
+        let ast = Parser.module_decl Scanner.token lex in
         let () = assert (0 = List.length ast.functions) in
         let () = assert (1 = List.length ast.classes) in
 
@@ -38,10 +38,10 @@ KTHXBAI
 
         let pubmember_typ, pubmember_name = List.hd clas.pubmembers in
         let () = assert ("baz" = pubmember_name) in
-        let () = assert (Ast.String = pubmember_typ) in
+        let () = assert (Ast.TypIdent "STRIN" = pubmember_typ) in
         ()
     ) with
-    | Parsing.Parse_error -> failwith (ParserUtils.syntax_error_string lex)
+    | Parsing.Parse_error -> failwith (Utils.syntax_error_string lex)
 
 
 let run_tests () =

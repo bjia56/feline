@@ -1,13 +1,11 @@
 {
 open Parser
-open LexUtils
+open Utils
 }
 
 rule token =
     parse [' ' '\t' '\r']                  { token lexbuf }
     | ['\n']                               { Lexing.new_line lexbuf; NEWLINE }
-    | '?'                                  { QUESTION }
-    | ':'                                  { COLON }
     | "I"                                  { I }
     | "HAS"                                { HAS }
     | "A"                                  { A }
@@ -29,8 +27,8 @@ rule token =
     | "WIT"                                { WIT }
     | "IN"                                 { IN }
     | "KTHXBAI"                            { KTHXBAI }
-    | "EVRYONE"                            { EVRYONE }
-    | "MESELF"                             { MESELF }
+    | "EVRYONE:"                           { EVRYONE }
+    | "MESELF:"                            { MESELF }
     | "KTHX"                               { KTHX }
     | "PLUZ"                               { PLUZ }
     | "MYNUZ"                              { MYNUZ }
@@ -43,6 +41,9 @@ rule token =
     | "SMALLR" [' ' '\t']+ "THAN"          { SMALLR_THAN }
     | "AN"                                 { AN }
     | "OR"                                 { OR }
+    | "IF"                                 { IF }
+    | "ELS"                                { ELS }
+    | "WYL"                                { WYL }
     | "OPOZIT"                             { OPOZIT }
     | ['0'-'9']+ as lit                    { INTLIT(int_of_string lit) }
     | "YEZ"                                { BLIT(true)  }
@@ -53,9 +54,11 @@ rule token =
         "\\t"
       )* '"' as str                        { STRLIT(sanitize_str_lit str) }
     | "INTEGR"                             { INTEGR }
-    | "STRIN"                              { STRIN }
     | "BUL"                                { BUL }
     | "NOL"                                { NOL }
     | ['a'-'z' 'A'-'Z' '_']
       ['a'-'z' 'A'-'Z' '_' '0'-'9']* as id { IDENT(id) }
+    | ['a'-'z' 'A'-'Z' '_']
+      ['a'-'z' 'A'-'Z' '_' '0'-'9']*
+      '?' as id                            { IDENT_QUESTION(List.hd (String.split_on_char '?' id )) }
     | eof                                  { EOF }

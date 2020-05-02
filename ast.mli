@@ -4,12 +4,13 @@ type typ =
   | Null
   | Void
   | Int
-  | String
   | Bool
   (* | Array of typ * int  *)
   (* TODO: Implement Arrays *)
   | Exception of string
   | TypIdent of string
+  (* Used internally *)
+  | CStringPtr
 
 type binop = Add | Sub | Mul | Div | Neq | Eq | Less | Greater | And | Or
 
@@ -39,7 +40,10 @@ type stmt =
   | BindAssign of bind * expr
   | Assign of string * expr
   | ClassMemRassn of string * string * expr
-  | Dealloc of expr
+  | Dealloc of expr 
+  | If of expr * stmt list
+  | IfElse of expr * stmt list * stmt list
+  | While of expr * stmt list
 
 type func_decl = {
   rtyp : typ;
@@ -63,7 +67,8 @@ type class_decl = {
   des : des_decl list; (* always public *)
 }
 
-type program = {
+type module_decl = {
+  imports : string list;
   classes : class_decl list;
   functions : func_decl list;
   globals : bind list;
