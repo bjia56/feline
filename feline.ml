@@ -68,18 +68,42 @@ let print_parsed_modules (asts : Ast.program StringMap.t) =
   let () = StringMap.iter print_binding asts in
   print_endline ""
 
+let ir_file_of_llmodule (name : string) (lm : Llvm.llmodule) =
+  let fname = Filename.temp_file name ".ir" in
+  let () = Llvm.print_module fname lm in
+  fname
+
+let obj_file_of_ir_file (ir_file : string) =
+  let out = ir_file ^ ".o" in
+  let cmd = "llc -filetype=obj " ^ ir_file ^ " -o " ^ out in
+  let () = print_endline cmd in
+  let ret = Sys.command cmd in
+  if ret <> 0 then raise (Failure ("llc exited with code " ^ string_of_int ret))
+  else out
+
+let gcc_objects (output : string) (obj_files : string list) =
+  let obj_arg_list =
+    List.fold_left
+      (fun acc obj_file -> acc ^ " " ^ obj_file)
+      (List.hd obj_files) (List.tl obj_files)
+  in
+  let cmd = "gcc -o " ^ output ^ " " ^ obj_arg_list in
+  let () = print_endline cmd in
+  let ret = Sys.command cmd in
+  if ret <> 0 then raise (Failure ("gcc exited with code " ^ string_of_int ret))
+  else ()
+
 let _ =
   let files = ref empty_string_list in
   let testcases = ref false in
+  let output = ref "a.out" in
   let speclist =
     [
       ( "-file",
-        Arg.String
-          (fun x ->
-            let () = files := List.rev (x :: List.rev !files) in
-            ()),
+        Arg.String (fun x -> files := List.rev (x :: List.rev !files)),
         "Input file to compile" );
       ("-test", Arg.Set testcases, "Run compiler test cases");
+      ("-out", Arg.Set_string output, "File name of compiled binary");
     ]
   in
   let usage =
@@ -88,15 +112,34 @@ let _ =
   let () = Arg.parse speclist (fun x -> ()) usage in
 
   if !testcases then ParserTests.run_tests ()
+  else if List.length !files = 0 then print_endline "No input files, exiting"
   else
-    (*let () = print_endline ("Compiling " ^ (string_of_int (List.length !files)) ^ " files...") in*)
-    try
-      let asts = asts_of_file_list !files in
-      (*let () = print_parsed_modules asts in*)
-      let sasts = StringMap.map sprogram_of_ast asts in
-      let name, sast = List.hd (StringMap.bindings sasts) in
-      let () =
-        print_string (Llvm.string_of_llmodule (Irgen.translate name sast))
-      in
-      ()
-    with ParserUtils.SyntaxError e -> print_endline e
+    let () =
+      print_endline
+        ("Compiling " ^ string_of_int (List.length !files) ^ " files...")
+    in
+    let ir_files = ref StringMap.empty in
+    let obj_files = ref StringMap.empty in
+    let _ =
+      try
+        let asts = asts_of_file_list !files in
+        let () = print_parsed_modules asts in
+        let sasts = StringMap.map sprogram_of_ast asts in
+        let llmodules = StringMap.mapi Irgen.translate sasts in
+        let () = ir_files := StringMap.mapi ir_file_of_llmodule llmodules in
+        let () = obj_files := StringMap.map obj_file_of_ir_file !ir_files in
+
+        let () =
+          gcc_objects !output
+            (List.map (fun (_, v) -> v) (StringMap.bindings !obj_files))
+        in
+
+        let _ = StringMap.map Llvm.dispose_module llmodules in
+        print_endline "Compilation complete"
+      with
+      | ParserUtils.SyntaxError e -> print_endline e
+      | Failure e -> print_endline e
+    in
+    let _ = StringMap.map Sys.remove !ir_files in
+    let _ = StringMap.map Sys.remove !obj_files in
+    ()
