@@ -181,8 +181,9 @@ let check (classes, functions, globals) =
             let t =
               match op with
               | (Add | Sub | Mul | Div) when t1 = Int -> Int
-              | Eq | Neq -> Bool
+              | (Eq | Neq) -> Bool
               | Less when t1 = Int -> Bool
+              | Greater when t1 = Int -> Bool
               | (And | Or) when t1 = Bool -> Bool
               | _ -> raise (Failure err)
             in
@@ -288,6 +289,8 @@ let check (classes, functions, globals) =
           let symbols = StringMap.add name ty symbols in
           let () = check_binds "local" locals in
           let (typ, str), tbl = check_expr e symbols in
+          let err = "illegal assignment in expression" in
+          let _ = check_assign ty typ err in
           (SBindAssign ((ty, name), (typ, str)), locals, symbols)
       | Assign (var, e) ->
           let lt = type_of_identifier var symbols
