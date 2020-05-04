@@ -1,22 +1,22 @@
 %{
 open Ast
-open ParserUtils
 %}
 
-%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS DIS NU DELET CONS DES WIT IN MEOW KTHXBAI KTHX QUESTION COLON EVRYONE MESELF NEWLINE
-%token INTEGR STRIN BUL NOL IF ELS WYL
+%token I HAS A VARBL ITZ GIVEZ PLS GIV HAI ME TEH FUNC CLAS DIS NU DELET CONS DES WIT IN KTHXBAI KTHX EVRYONE MESELF NEWLINE
+%token INTEGR BUL NOL IF ELS WYL
 %token NOT_SAYM_AZ SAYM_AZ
 %token BIGGR_THAN SMALLR_THAN
 %token PLUZ MYNUZ TYMEZ DIVYD
 %token AN OR OPOZIT
 %token <string> IDENT
+%token <string> IDENT_QUESTION
 %token <int> INTLIT
 %token <bool> BLIT
 %token <string> STRLIT
 %token EOF
 
-%start program
-%type <Ast.program> program
+%start module_decl
+%type <Ast.module_decl> module_decl
 
 %left OR AN
 %left OPOZIT
@@ -26,15 +26,26 @@ open ParserUtils
 
 %%
 
-program:
-    | decls EOF         { $1 }
+module_decl:
+    | imports_and_decls EOF { $1 }
+
+imports_and_decls:
+    | imports NEWLINE imports_and_decls { { imports=$1 @ $3.imports; classes=$3.classes; functions=$3.functions; globals=$3.globals } }
+    | decls                             { $1 }
 
 decls:
-    | /* nothing */            { { classes=[]; functions=[]; globals=[] } }
-    | func_decl NEWLINE decls  { { classes=$3.classes; functions=$1::$3.functions; globals=$3.globals } }
-    | glob_vdecl NEWLINE decls { { classes=$3.classes; functions=$3.functions; globals=$1::$3.globals } }
-    | class_decl NEWLINE decls { { classes=$1::$3.classes; functions=$3.functions; globals=$3.globals } }
+    | /* nothing */            { { imports=[]; classes=[]; functions=[]; globals=[] } }
+    | func_decl NEWLINE decls  { { imports=[]; classes=$3.classes; functions=$1::$3.functions; globals=$3.globals } }
+    | glob_vdecl NEWLINE decls { { imports=[]; classes=$3.classes; functions=$3.functions; globals=$1::$3.globals } }
+    | class_decl NEWLINE decls { { imports=[]; classes=$1::$3.classes; functions=$3.functions; globals=$3.globals } }
     | NEWLINE decls            { $2 }
+
+imports:
+    | PLS GIV imports_list { $3 }
+
+imports_list:
+    | IDENT_QUESTION              { [$1] }
+    | IDENT_QUESTION imports_list { $1 :: $2 }
 
 expr:
     | NOL                   { NullLit }
@@ -61,7 +72,6 @@ expr:
 
 typ:
     | INTEGR { Int }
-    | STRIN  { String }
     | IDENT  { TypIdent($1) }
     | BUL    { Bool }
 
@@ -107,7 +117,7 @@ stmt_list:
     | stmt stmt_list    { $1::$2 }
     | NEWLINE stmt_list { $2 }
 
-stmt:   
+stmt:
     | loc_vdecl ITZ expr NEWLINE                     { BindAssign($1, $3) }
     | IDENT ITZ expr NEWLINE                         { Assign($1, $3) }
     | loc_vdecl NEWLINE                              { Bind($1) }
@@ -115,7 +125,7 @@ stmt:
     | GIVEZ expr NEWLINE                             { Return($2) }
     | IF expr NEWLINE stmt_list KTHX                 { If($2, $4)}
     | IF expr NEWLINE stmt_list ELS stmt_list        { IfElse($2, $4, $6) }
-    | WYL expr stmt_list                             { While($2, $3) } 
+    | WYL expr stmt_list                             { While($2, $3) }
     | IDENT IN IDENT ITZ expr NEWLINE                { ClassMemRassn($1, $3, $5) }
     | IDENT IN DIS ITZ expr NEWLINE                  { ClassMemRassn($1, "DIS", $5) }
     | DELET expr NEWLINE                             { Dealloc($2) }
@@ -144,28 +154,28 @@ class_decl:
         }
 
 class_internals:
-    | EVRYONE COLON NEWLINE class_pub_internals class_internals
+    | EVRYONE NEWLINE class_pub_internals class_internals
         {
             {
                 cname="";
-                pubmembers=concat_lists $4.pubmembers $5.pubmembers;
-                privmembers=$5.privmembers;
-                pubfuncs=concat_lists $4.pubfuncs $5.pubfuncs;
-                privfuncs=$5.privfuncs;
-                cons=concat_lists $4.cons $5.cons;
-                des=concat_lists $4.des $5.des;
+                pubmembers=$3.pubmembers @ $4.pubmembers;
+                privmembers=$4.privmembers;
+                pubfuncs=$3.pubfuncs @ $4.pubfuncs;
+                privfuncs=$4.privfuncs;
+                cons=$3.cons @ $4.cons;
+                des=$3.des @ $4.des;
             }
         }
-    | MESELF COLON NEWLINE class_priv_internals class_internals
+    | MESELF NEWLINE class_priv_internals class_internals
         {
             {
                 cname="";
-                pubmembers=$5.pubmembers;
-                privmembers=concat_lists $4.privmembers $5.privmembers;
-                pubfuncs=$5.pubfuncs;
-                privfuncs=concat_lists $4.privfuncs $5.privfuncs;
-                cons=$5.cons;
-                des=$5.des;
+                pubmembers=$4.pubmembers;
+                privmembers=$3.privmembers @ $4.privmembers;
+                pubfuncs=$4.pubfuncs;
+                privfuncs=$3.privfuncs @ $4.privfuncs;
+                cons=$4.cons;
+                des=$4.des;
             }
         }
     | /* nothing */

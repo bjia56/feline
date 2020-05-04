@@ -2,12 +2,12 @@ open Ast
 
 let ast_of_chan chan =
   let lexbuf = Lexing.from_channel chan in
-  try Parser.program Scanner.token lexbuf
+  try Parser.module_decl Scanner.token lexbuf
   with Parsing.Parse_error ->
-    raise (ParserUtils.SyntaxError (ParserUtils.syntax_error_string lexbuf))
+    raise (Utils.SyntaxError (Utils.syntax_error_string lexbuf))
 
 let ast_of_file file_name =
-  let () = ParserUtils.update_current_file file_name in
+  let () = Utils.update_current_file file_name in
   let file_chan = open_in file_name in
   let ast = ast_of_chan file_chan in
   let () = close_in file_chan in
@@ -43,18 +43,17 @@ let get_module_name (file : string) : string =
   let components = split_string '/' trimmed in
   List.hd (List.rev components)
 
-let rec asts_of_file_list (files : string list) : Ast.program StringMap.t =
+let rec asts_of_file_list (files : string list) : Ast.module_decl StringMap.t =
   match files with
   | [] -> StringMap.empty
   | hd :: tl ->
       let tl_result = asts_of_file_list tl in
       let module_name = get_module_name hd in
-      StringMap.add module_name (ast_of_file hd) tl_result
+      if StringMap.mem module_name tl_result then
+        raise (Failure ("duplicate module " ^ module_name))
+      else StringMap.add module_name (ast_of_file hd) tl_result
 
-let sprogram_of_ast (ast : Ast.program) : Sast.sprogram =
-  Semant.check (ast.classes, ast.functions, ast.globals)
-
-let print_parsed_modules (asts : Ast.program StringMap.t) =
+let print_parsed_modules (asts : Ast.module_decl StringMap.t) =
   let is_first = ref true in
   let print_binding k v =
     if not !is_first then
@@ -68,8 +67,8 @@ let print_parsed_modules (asts : Ast.program StringMap.t) =
   let () = StringMap.iter print_binding asts in
   print_endline ""
 
-let ir_file_of_llmodule (name : string) (lm : Llvm.llmodule) =
-  let fname = Filename.temp_file name ".ir" in
+let ir_file_of_llmodule (use_tmp : bool) (name : string) (lm : Llvm.llmodule) =
+  let fname = if use_tmp then Filename.temp_file name ".ir" else name ^ ".ir" in
   let () = Llvm.print_module fname lm in
   fname
 
@@ -87,7 +86,10 @@ let gcc_objects (output : string) (obj_files : string list) =
       (fun acc obj_file -> acc ^ " " ^ obj_file)
       (List.hd obj_files) (List.tl obj_files)
   in
-  let cmd = "gcc -o " ^ output ^ " " ^ obj_arg_list in
+  let cmd =
+    "gcc -o " ^ output ^ " " ^ obj_arg_list ^ " "
+    ^ BuiltinsLoader.library_src_dir ^ "/*.c"
+  in
   let () = print_endline cmd in
   let ret = Sys.command cmd in
   if ret <> 0 then raise (Failure ("gcc exited with code " ^ string_of_int ret))
@@ -97,13 +99,15 @@ let _ =
   let files = ref empty_string_list in
   let testcases = ref false in
   let output = ref "a.out" in
+  let ir_only = ref false in
   let speclist =
     [
       ( "-file",
-        Arg.String (fun x -> files := List.rev (x :: List.rev !files)),
+        Arg.String (fun x -> files := !files @ [ x ]),
         "Input file to compile" );
       ("-test", Arg.Set testcases, "Run compiler test cases");
       ("-out", Arg.Set_string output, "File name of compiled binary");
+      ("-ir", Arg.Set ir_only, "Generate IR only");
     ]
   in
   let usage =
@@ -124,21 +128,33 @@ let _ =
       try
         let asts = asts_of_file_list !files in
         let () = print_parsed_modules asts in
-        let sasts = StringMap.map sprogram_of_ast asts in
-        let llmodules = StringMap.mapi Irgen.translate sasts in
-        let () = ir_files := StringMap.mapi ir_file_of_llmodule llmodules in
-        let () = obj_files := StringMap.map obj_file_of_ir_file !ir_files in
-
-        let () =
-          gcc_objects !output
-            (List.map (fun (_, v) -> v) (StringMap.bindings !obj_files))
+        let sasts =
+          StringMap.mapi
+            (Semant.check_module
+               (BuiltinsLoader.with_builtins asts)
+               StringMap.empty)
+            asts
         in
+        let llmodules = StringMap.mapi Irgen.translate sasts in
+        if !ir_only then
+          let _ = StringMap.mapi (ir_file_of_llmodule false) llmodules in
+          ()
+        else
+          let () =
+            ir_files := StringMap.mapi (ir_file_of_llmodule true) llmodules
+          in
+          let () = obj_files := StringMap.map obj_file_of_ir_file !ir_files in
 
-        let _ = StringMap.map Llvm.dispose_module llmodules in
-        print_endline "Compilation complete"
+          let () =
+            gcc_objects !output
+              (List.map (fun (_, v) -> v) (StringMap.bindings !obj_files))
+          in
+
+          let _ = StringMap.map Llvm.dispose_module llmodules in
+          print_endline "Compilation complete"
       with
-      | ParserUtils.SyntaxError e -> print_endline e
-      | Failure e -> print_endline e
+      | Utils.SyntaxError e -> print_endline e
+      | Failure e -> print_endline ("compilation error: " ^ e)
     in
     let _ = StringMap.map Sys.remove !ir_files in
     let _ = StringMap.map Sys.remove !obj_files in
