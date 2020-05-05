@@ -9,7 +9,7 @@ let string_of_typ = function
   | Bool -> "bool"
   | Exception s -> "exception " ^ s
   | TypIdent s -> "custom " ^ s
-  | CStringPtr -> "cstring"
+  | PtrAsInt -> "pointer"
 
 exception SyntaxError of string
 exception InvalidStringLiteral

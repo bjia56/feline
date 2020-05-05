@@ -8,7 +8,7 @@ let ast =
         {
           cname = "STRIN";
           pubmembers = [];
-          privmembers = [ (CStringPtr, "contents"); (Int, "length") ];
+          privmembers = [ (PtrAsInt, "contents"); (Int, "length") ];
           pubfuncs = [];
           privfuncs = [];
           cons = [ [] ];

@@ -87,7 +87,7 @@ let gcc_objects (output : string) (obj_files : string list) =
       (List.hd obj_files) (List.tl obj_files)
   in
   let cmd =
-    "gcc -o " ^ output ^ " " ^ obj_arg_list ^ " "
+    "gcc -static -o " ^ output ^ " " ^ obj_arg_list ^ " "
     ^ BuiltinsLoader.library_src_dir ^ "/*.c"
   in
   let () = print_endline cmd in

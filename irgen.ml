@@ -33,7 +33,7 @@ let translate (mod_name : string) (p : smodule) =
       | Bool -> i1_t
       | Void -> void_t
       | TypIdent s -> L.pointer_type (StringMap.find s !class_lltype_map)
-      | CStringPtr -> L.pointer_type i8_t
+      | PtrAsInt -> i64_t
       | _ ->
           raise
             (Unimplemented
