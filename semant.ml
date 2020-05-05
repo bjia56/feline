@@ -9,8 +9,63 @@ module StringMap = Map.Make (String)
    throws an exception.
 
    Check each global variable, then check functions, then check classes *)
+let rec check_module (all_modules : module_decl StringMap.t)
+    (visited : bool StringMap.t) (name : string) (m : module_decl) =
+  let () =
+    if StringMap.mem name visited then
+      raise (Failure ("circular import detected in module " ^ name))
+    else ()
+  in
+  let visited = StringMap.add name true visited in
 
-let check (classes, functions, globals) =
+  let classes, functions, globals = (m.classes, m.functions, m.globals) in
+
+  (* Collect imports *)
+  let import_classes, import_functions, import_globals, simport_classes =
+    let check_import_dups (kind : string) (imports : string list) =
+      let rec dups = function
+        | [] -> ()
+        | n1 :: n2 :: _ when n1 = n2 ->
+            raise (Failure ("duplicate import " ^ kind ^ ": " ^ n1))
+        | _ :: t -> dups t
+      in
+      dups (List.sort compare imports)
+    in
+    let check_valid_import (import : string) =
+      if StringMap.mem import all_modules then ()
+      else raise (Failure ("cannot find module " ^ import))
+    in
+    let collect_imports (classes, functions, globals, sclasses) mod_name =
+      let m = StringMap.find mod_name all_modules in
+      let sast = check_module all_modules visited mod_name m in
+      ( classes @ m.classes,
+        functions @ m.functions,
+        globals @ m.globals,
+        sclasses @ sast.sclasses )
+    in
+
+    (* Check for duplicate imports *)
+    check_import_dups "module" m.imports;
+
+    (* Inject globalBuiltins module *)
+    let mimports = if name <> "globalBuiltins" then "globalBuiltins" :: m.imports else m.imports in
+
+    (* Check all imports are valid *)
+    let _ = List.map check_valid_import mimports in
+
+    (* Collect all fields declared in imports *)
+    let c, f, g, sc =
+      List.fold_left collect_imports ([], [], [], []) mimports
+    in
+
+    (* Check dups in imports *)
+    check_import_dups "class" (List.map (fun c -> c.cname) c);
+    check_import_dups "function" (List.map (fun f -> f.fname) f);
+    check_import_dups "global" (List.map (fun (_, n) -> n) g);
+
+    (c, f, g, sc)
+  in
+
   (* Verify a list of bindings has no duplicate names *)
   let check_binds (kind : string) (binds : (typ * string) list) =
     let rec dups = function
@@ -22,45 +77,68 @@ let check (classes, functions, globals) =
     dups (List.sort (fun (_, a) (_, b) -> compare a b) binds)
   in
 
+  (* Function to check if a global is a redefinition of a imported global *)
+  let check_redefined_import_global map (_, n) =
+    if StringMap.mem n map then
+      raise
+        (Failure ("global " ^ n ^ " has been imported and may not be redefined"))
+    else StringMap.add n true map
+  in
+
   (* Check that no globals are duplicate *)
   check_binds "global" globals;
+  let _ =
+    List.fold_left check_redefined_import_global StringMap.empty globals
+  in
 
-  (* Collect function declarations for built-in functions: no bodies *)
-  let built_in_decls =
-    StringMap.add "MEOW"
-      { rtyp = Int; fname = "MEOW"; formals = [ (String, "x") ]; body = [] }
-      StringMap.empty
+  (* Build symbol table for imported functions *)
+  let import_func_map =
+    List.fold_left
+      (fun m f -> StringMap.add f.fname f m)
+      StringMap.empty import_functions
   in
 
   (* Add function name to symbol table *)
   let add_func map fd =
-    let built_in_err = "function " ^ fd.fname ^ " may not be defined"
+    let imported_err =
+      "function " ^ fd.fname ^ " has been imported and may not be redefined"
     and dup_err = "duplicate function " ^ fd.fname
     and make_err er = raise (Failure er)
     and n = fd.fname (* Name of the function *) in
     match fd with
     (* No duplicate functions or redefinitions of built-ins *)
-    | _ when StringMap.mem n built_in_decls -> make_err built_in_err
+    | _ when StringMap.mem n import_func_map -> make_err imported_err
     | _ when StringMap.mem n map -> make_err dup_err
     | _ -> StringMap.add n fd map
   in
 
   (* Collect all function names into one symbol table *)
-  let function_decls = List.fold_left add_func built_in_decls functions in
+  let function_decls = List.fold_left add_func import_func_map functions in
 
-  (* Collect all class names into one symbol table *)
+  (* Build symbol table for imported classes *)
+  let import_class_map =
+    List.fold_left
+      (fun m c -> StringMap.add c.cname c m)
+      StringMap.empty import_classes
+  in
+
+  (* Add class name symbol table *)
   let add_class map cd =
+    let imported_err =
+      "class " ^ cd.cname ^ " has been imported and may not be redefined"
+    in
     let dup_err = "duplicate class " ^ cd.cname
     and make_err er = raise (Failure er)
     and n = cd.cname (* Name of the class *) in
     match cd with
     (* No duplicate classes *)
+    | _ when StringMap.mem n import_class_map -> make_err imported_err
     | _ when StringMap.mem n map -> make_err dup_err
     | _ -> StringMap.add n cd map
   in
 
   (* Collect all class names into one symbol table *)
-  let class_decls = List.fold_left add_class StringMap.empty classes in
+  let class_decls = List.fold_left add_class import_class_map classes in
 
   (* Return a function from our function_decl symbol table *)
   let find_func s =
@@ -107,14 +185,17 @@ let check (classes, functions, globals) =
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
     let check_assign lvaluet rvaluet err =
-      if lvaluet = rvaluet then lvaluet else raise (Failure err)
+        if lvaluet = rvaluet then lvaluet
+      else
+        raise (Failure err)
     in
 
     (* Build local symbol table of variables for this function *)
     let symbols =
       List.fold_left
         (fun m (ty, name) -> StringMap.add name ty m)
-        StringMap.empty (globals @ func.formals)
+        StringMap.empty
+        (import_globals @ globals @ func.formals)
     in
 
     (* Return a variable from our local symbol table *)
@@ -168,7 +249,7 @@ let check (classes, functions, globals) =
       | NullLit -> ((Null, SNullLit), sym_tbl)
       | IntLit l -> ((Int, SIntLit l), sym_tbl)
       | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
-      | StrLit l -> ((String, SStrLit l), sym_tbl)
+      | StrLit l -> ((TypIdent "STRIN", SStrLit l), sym_tbl)
       | Ident var -> ((type_of_identifier var sym_tbl, SIdent var), sym_tbl)
       | Binop (e1, op, e2) ->
           let (t1, e1'), sym_tbl = check_expr e1 sym_tbl in
@@ -254,14 +335,14 @@ let check (classes, functions, globals) =
           ( (instance_type, SClassMemAccess (mem, instance, find_mem_idx mem c)),
             sym_tbl )
     in
-
-    (*
+   
 		let check_bool_expr e sym_tbl =
 		  let ((t, e'), m) = check_expr e sym_tbl in
 		  match t with
 		  | Bool -> (t, e')
 		  | _ -> raise (Failure ("expected Boolean expression"))
-		in *)
+		in 
+
     let rec check_stmt_list stmt_list locals symbols =
       match stmt_list with
       | [] -> []
@@ -294,7 +375,7 @@ let check (classes, functions, globals) =
           and (rt, e'), _ = check_expr e symbols in
           let err = "illegal assignment in expression" in
           let _ = check_assign lt rt err in
-          (SAssign (var, (rt, e')), locals, symbols)
+          (SAssign ((lt, var), (rt, e')), locals, symbols)
       | Return e ->
           let (t, e'), _ = check_expr e symbols in
           if t = func.rtyp then (SReturn (t, e'), locals, symbols)
@@ -312,7 +393,7 @@ let check (classes, functions, globals) =
           let _ = check_assign lt rt err in
           (* Return type *)
           (* (SClassMemRassn(string, string, (typ, sx)), locals, symbols) *)
-          ( SClassMemRassn (mem, instance, find_mem_idx mem cls, (rt, e')),
+          ( SClassMemRassn ((lt, mem), instance, find_mem_idx mem cls, (rt, e')),
             locals,
             symbols )
       | Dealloc expr ->
@@ -328,6 +409,17 @@ let check (classes, functions, globals) =
                       non-object type")
           in
           (SDealloc (t, e'), locals, symbols)
+       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols), 
+       					   locals,
+       					   symbols)
+       | IfElse (e, sl1, sl2) -> (SIfElse(check_bool_expr e symbols, check_stmt_list sl1 locals symbols,
+       							 check_stmt_list sl2 locals symbols),
+       							 locals,
+       							 symbols)
+       | While (e, sl) -> (SWhile(check_bool_expr e symbols, check_stmt_list sl locals symbols),
+       							 locals,
+       							 symbols)
+
     in
     (* body of check_func *)
     {
@@ -346,7 +438,8 @@ let check (classes, functions, globals) =
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
     let check_assign lvaluet rvaluet err =
-      if lvaluet = rvaluet then lvaluet else raise (Failure err)
+      if lvaluet = rvaluet then lvaluet
+        else raise (Failure err)
     in
 
     (* Build local symbol table of variables for this function *)
@@ -354,8 +447,8 @@ let check (classes, functions, globals) =
       List.fold_left
         (fun m (ty, name) -> StringMap.add name ty m)
         StringMap.empty
-        ( globals @ calling_class.pubmembers @ calling_class.privmembers
-        @ func.formals )
+        ( import_globals @ globals @ calling_class.pubmembers
+        @ calling_class.privmembers @ func.formals )
     in
 
     (* Return a variable from our local symbol table *)
@@ -424,7 +517,7 @@ let check (classes, functions, globals) =
       | NullLit -> ((Null, SNullLit), sym_tbl)
       | IntLit l -> ((Int, SIntLit l), sym_tbl)
       | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
-      | StrLit l -> ((String, SStrLit l), sym_tbl)
+      | StrLit l -> ((TypIdent "STRIN", SStrLit l), sym_tbl)
       | Ident var -> ((type_of_identifier var sym_tbl, SIdent var), sym_tbl)
       | Binop (e1, op, e2) ->
           let (t1, e1'), sym_tbl = check_expr e1 sym_tbl in
@@ -546,12 +639,12 @@ let check (classes, functions, globals) =
             sym_tbl )
     in
 
-    (* let check_bool_expr e sym_tbl=
-         let ((t, e'), m) = check_expr e sym_tbl in
-         match t with
-         | Bool -> (t, e')
-         | _ -> raise (Failure ("expected Boolean expression"))
-       in *)
+    let check_bool_expr e sym_tbl =
+		  let ((t, e'), m) = check_expr e sym_tbl in
+		  match t with
+		  | Bool -> (t, e')
+		  | _ -> raise (Failure ("expected Boolean expression"))
+		in 
     let rec check_stmt_list stmt_list locals symbols =
       match stmt_list with
       | [] -> []
@@ -584,7 +677,7 @@ let check (classes, functions, globals) =
           and (rt, e'), _ = check_expr e symbols in
           let err = "illegal assignment in expression" in
           let _ = check_assign lt rt err in
-          (SAssign (var, (rt, e')), locals, symbols)
+          (SAssign ((lt, var), (rt, e')), locals, symbols)
       | Return e ->
           let (t, e'), _ = check_expr e symbols in
           if t = func.rtyp then (SReturn (t, e'), locals, symbols)
@@ -622,7 +715,7 @@ let check (classes, functions, globals) =
           let lt, _ = found_mem in
           let _ = check_assign lt rt err in
           ( SClassMemRassn
-              (mem, instance, find_mem_idx mem instance_type_decl, (rt, e')),
+              ((lt, mem), instance, find_mem_idx mem instance_type_decl, (rt, e')),
             locals,
             symbols )
       | Dealloc expr ->
@@ -638,6 +731,16 @@ let check (classes, functions, globals) =
                       non-object type")
           in
           (SDealloc (t, e'), locals, symbols)
+       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols), 
+       					   locals,
+       					   symbols)
+       | IfElse (e, sl1, sl2) -> (SIfElse(check_bool_expr e symbols, check_stmt_list sl1 locals symbols,
+       							 check_stmt_list sl2 locals symbols),
+       							 locals,
+       							 symbols)
+       | While (e, sl) -> (SWhile(check_bool_expr e symbols, check_stmt_list sl locals symbols),
+       							 locals,
+       							 symbols)
     in
     (* body of check_func *)
     {
@@ -655,7 +758,9 @@ let check (classes, functions, globals) =
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
     let check_assign lvaluet rvaluet err =
-      if lvaluet = rvaluet then lvaluet else raise (Failure err)
+      if lvaluet = rvaluet then lvaluet
+      else
+        raise (Failure err)
     in
 
     (* Build local symbol table of variables for this function *)
@@ -663,7 +768,8 @@ let check (classes, functions, globals) =
       List.fold_left
         (fun m (ty, name) -> StringMap.add name ty m)
         StringMap.empty
-        (globals @ calling_class.pubmembers @ calling_class.privmembers)
+        ( import_globals @ globals @ calling_class.pubmembers
+        @ calling_class.privmembers )
     in
 
     (* Return a variable from our local symbol table *)
@@ -732,7 +838,7 @@ let check (classes, functions, globals) =
       | NullLit -> ((Null, SNullLit), sym_tbl)
       | IntLit l -> ((Int, SIntLit l), sym_tbl)
       | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
-      | StrLit l -> ((String, SStrLit l), sym_tbl)
+      | StrLit l -> ((TypIdent "STRIN", SStrLit l), sym_tbl)
       | Ident var -> ((type_of_identifier var sym_tbl, SIdent var), sym_tbl)
       | Binop (e1, op, e2) ->
           let (t1, e1'), sym_tbl = check_expr e1 sym_tbl in
@@ -854,12 +960,12 @@ let check (classes, functions, globals) =
             sym_tbl )
     in
 
-    (* let check_bool_expr e sym_tbl=
+    let check_bool_expr e sym_tbl=
          let ((t, e'), m) = check_expr e sym_tbl in
          match t with
          | Bool -> (t, e')
          | _ -> raise (Failure ("expected Boolean expression"))
-       in *)
+       in
     let rec check_stmt_list stmt_list locals symbols =
       match stmt_list with
       | [] -> []
@@ -892,7 +998,7 @@ let check (classes, functions, globals) =
           and (rt, e'), _ = check_expr e symbols in
           let err = "illegal assignment in expression" in
           let _ = check_assign lt rt err in
-          (SAssign (var, (rt, e')), locals, symbols)
+          (SAssign ((lt, var), (rt, e')), locals, symbols)
       (* | Return e ->
          let ((t, e'), _) = check_expr e symbols in
          if t = func.rtyp then (SReturn (t, e'), locals, symbols)
@@ -932,7 +1038,7 @@ let check (classes, functions, globals) =
           let lt, _ = found_mem in
           let _ = check_assign lt rt err in
           ( SClassMemRassn
-              (mem, instance, find_mem_idx mem instance_type_decl, (rt, e')),
+              ((lt, mem), instance, find_mem_idx mem instance_type_decl, (rt, e')),
             locals,
             symbols )
       | Dealloc expr ->
@@ -948,6 +1054,16 @@ let check (classes, functions, globals) =
                       non-object type")
           in
           (SDealloc (t, e'), locals, symbols)
+       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols), 
+       					   locals,
+       					   symbols)
+       | IfElse (e, sl1, sl2) -> (SIfElse(check_bool_expr e symbols, check_stmt_list sl1 locals symbols,
+       							 check_stmt_list sl2 locals symbols),
+       							 locals,
+       							 symbols)
+       | While (e, sl) -> (SWhile(check_bool_expr e symbols, check_stmt_list sl locals symbols),
+       							 locals,
+       							 symbols)
     in
     check_stmt_list cons locals symbols
   in
@@ -958,7 +1074,9 @@ let check (classes, functions, globals) =
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
     let check_assign lvaluet rvaluet err =
-      if lvaluet = rvaluet then lvaluet else raise (Failure err)
+      if lvaluet = rvaluet then lvaluet
+      else
+        raise (Failure err)
     in
 
     (* Build local symbol table of variables for this function *)
@@ -966,7 +1084,8 @@ let check (classes, functions, globals) =
       List.fold_left
         (fun m (ty, name) -> StringMap.add name ty m)
         StringMap.empty
-        (globals @ calling_class.pubmembers @ calling_class.privmembers)
+        ( import_globals @ globals @ calling_class.pubmembers
+        @ calling_class.privmembers )
     in
 
     (* Return a variable from our local symbol table *)
@@ -1035,7 +1154,7 @@ let check (classes, functions, globals) =
       | NullLit -> ((Null, SNullLit), sym_tbl)
       | IntLit l -> ((Int, SIntLit l), sym_tbl)
       | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
-      | StrLit l -> ((String, SStrLit l), sym_tbl)
+      | StrLit l -> ((TypIdent "STRIN", SStrLit l), sym_tbl)
       | Ident var -> ((type_of_identifier var sym_tbl, SIdent var), sym_tbl)
       | Binop (e1, op, e2) ->
           let (t1, e1'), sym_tbl = check_expr e1 sym_tbl in
@@ -1157,12 +1276,12 @@ let check (classes, functions, globals) =
             sym_tbl )
     in
 
-    (* let check_bool_expr e sym_tbl=
-         let ((t, e'), m) = check_expr e sym_tbl in
-         match t with
-         | Bool -> (t, e')
-         | _ -> raise (Failure ("expected Boolean expression"))
-       in *)
+    let check_bool_expr e sym_tbl =
+		  let ((t, e'), m) = check_expr e sym_tbl in
+		  match t with
+		  | Bool -> (t, e')
+		  | _ -> raise (Failure ("expected Boolean expression"))
+		in 
     let rec check_stmt_list stmt_list locals symbols =
       match stmt_list with
       | [] -> []
@@ -1195,7 +1314,7 @@ let check (classes, functions, globals) =
           and (rt, e'), _ = check_expr e symbols in
           let err = "illegal assignment in expression" in
           let _ = check_assign lt rt err in
-          (SAssign (var, (rt, e')), locals, symbols)
+          (SAssign ((lt, var), (rt, e')), locals, symbols)
       (* | Return e ->
          let ((t, e'), _) = check_expr e symbols in
          if t = func.rtyp then (SReturn (t, e'), locals, symbols)
@@ -1235,7 +1354,7 @@ let check (classes, functions, globals) =
           let lt, _ = found_mem in
           let _ = check_assign lt rt err in
           ( SClassMemRassn
-              (mem, instance, find_mem_idx mem instance_type_decl, (rt, e')),
+              ((lt, mem), instance, find_mem_idx mem instance_type_decl, (rt, e')),
             locals,
             symbols )
       | Dealloc expr ->
@@ -1251,14 +1370,23 @@ let check (classes, functions, globals) =
                       non-object type")
           in
           (SDealloc (t, e'), locals, symbols)
+       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols), 
+       					   locals,
+       					   symbols)
+       | IfElse (e, sl1, sl2) -> (SIfElse(check_bool_expr e symbols, check_stmt_list sl1 locals symbols,
+       							 check_stmt_list sl2 locals symbols),
+       							 locals,
+       							 symbols)
+       | While (e, sl) -> (SWhile(check_bool_expr e symbols, check_stmt_list sl locals symbols),
+       							 locals,
+       							 symbols)
     in
     check_stmt_list des locals symbols
   in
 
   (* TODO: Check a class *)
   let check_class class_decl =
-    check_binds "public member" class_decl.pubmembers;
-    check_binds "private member" class_decl.privmembers;
+    check_binds "member" (class_decl.pubmembers @ class_decl.privmembers);
 
     let class_pubfunc_binds =
       List.map
@@ -1271,8 +1399,7 @@ let check (classes, functions, globals) =
         class_decl.privfuncs
     in
 
-    check_binds "public function" class_pubfunc_binds;
-    check_binds "private function" class_privfunc_binds;
+    check_binds "method" (class_pubfunc_binds @ class_privfunc_binds);
 
     let class_pubfuncs =
       List.map (fun f -> (class_decl, f)) class_decl.pubfuncs
@@ -1314,4 +1441,11 @@ let check (classes, functions, globals) =
     sclasses = List.map check_class classes;
     sfunctions = List.map check_func functions;
     sglobals = globals;
+    sclass_imports = simport_classes;
+    sfunction_imports =
+      List.map
+        (fun f ->
+          { srtyp = f.rtyp; sfname = f.fname; sformals = f.formals; sbody = [] })
+        import_functions;
+    sglobal_imports = import_globals;
   }

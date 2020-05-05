@@ -25,10 +25,13 @@ type sstmt =
   | SReturn of sexpr
   | SBind of bind
   | SBindAssign of bind * sexpr
-  | SAssign of string * sexpr
+  | SAssign of bind * sexpr
   (* member, instance, member index, sexpr *)
-  | SClassMemRassn of string * string * int * sexpr
+  | SClassMemRassn of bind * string * int * sexpr
   | SDealloc of sexpr
+  | SIf of sexpr * sstmt list
+  | SIfElse of sexpr * sstmt list * sstmt list
+  | SWhile of sexpr * sstmt list
 
 type sfunc_decl = {
   srtyp : typ;
@@ -51,8 +54,11 @@ type sclass_decl = {
   sdes : sdes_decl;
 }
 
-type sprogram = {
+type smodule = {
   sclasses : sclass_decl list;
   sfunctions : sfunc_decl list;
   sglobals : bind list;
+  sclass_imports : sclass_decl list;
+  sfunction_imports : sfunc_decl list;
+  sglobal_imports : bind list;
 }
