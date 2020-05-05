@@ -567,7 +567,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let _ = find_class cls_name in
           ((TypIdent cls_name, SNewInstance cls_name), sym_tbl)
       (* TODO: Need to account for ClassFunctcall, ClassMemAccess *)
-      | ClassFunctcall (fname, (instance, args)) ->
+      | ClassFunctcall (instance, (fname, args)) ->
           let _ = "can't find public function " ^ fname in
           let fd =
             if instance = "DIS" then
@@ -602,7 +602,11 @@ let rec check_module (all_modules : module_decl StringMap.t)
             let args'' = List.map (fun (a, b) -> a) args' in
             (* Return format *)
             (* ( ( typ , SClassFunctcall( string, (string, sexpr list ) ) ), sym_tbl) *)
-            ( (fd.rtyp, SClassFunctcall (fname, (calling_class.cname, args''))),
+          if instance = "DIS" then
+            ( (fd.rtyp, SClassFunctcall (calling_class.cname, (fname, args''))),
+              sym_tbl )
+          else 
+          	( (fd.rtyp, SClassFunctcall (instance, (fname, args''))),
               sym_tbl )
       | ClassMemAccess (mem, instance) ->
           let _ = "can't find public member " ^ mem in
@@ -888,7 +892,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let _ = find_class cls_name in
           ((TypIdent cls_name, SNewInstance cls_name), sym_tbl)
       (* TODO: Need to account for ClassFunctcall, ClassMemAccess *)
-      | ClassFunctcall (fname, (instance, args)) ->
+      | ClassFunctcall (instance, (fname, args)) ->
           let _ = "can't find public function " ^ fname in
           let fd =
             if instance = "DIS" then
@@ -923,7 +927,11 @@ let rec check_module (all_modules : module_decl StringMap.t)
             let args'' = List.map (fun (a, b) -> a) args' in
             (* Return format *)
             (* ( ( typ , SClassFunctcall( string, (string, sexpr list ) ) ), sym_tbl) *)
-            ( (fd.rtyp, SClassFunctcall (fname, (calling_class.cname, args''))),
+          if instance = "DIS" then
+            ( (fd.rtyp, SClassFunctcall (calling_class.cname, (fname, args''))),
+              sym_tbl )
+          else 
+          	( (fd.rtyp, SClassFunctcall (instance, (fname, args''))),
               sym_tbl )
       | ClassMemAccess (mem, instance) ->
           let _ = "can't find public member " ^ mem in
@@ -1204,7 +1212,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let _ = find_class cls_name in
           ((TypIdent cls_name, SNewInstance cls_name), sym_tbl)
       (* TODO: Need to account for ClassFunctcall, ClassMemAccess *)
-      | ClassFunctcall (fname, (instance, args)) ->
+      | ClassFunctcall (instance, (fname, args)) ->
           let _ = "can't find public function " ^ fname in
           let fd =
             if instance = "DIS" then
@@ -1239,7 +1247,11 @@ let rec check_module (all_modules : module_decl StringMap.t)
             let args'' = List.map (fun (a, b) -> a) args' in
             (* Return format *)
             (* ( ( typ , SClassFunctcall( string, (string, sexpr list ) ) ), sym_tbl) *)
-            ( (fd.rtyp, SClassFunctcall (fname, (calling_class.cname, args''))),
+          if instance = "DIS" then
+            ( (fd.rtyp, SClassFunctcall (calling_class.cname, (fname, args''))),
+              sym_tbl )
+          else 
+          	( (fd.rtyp, SClassFunctcall (instance, (fname, args''))),
               sym_tbl )
       | ClassMemAccess (mem, instance) ->
           let _ = "can't find public member " ^ mem in
