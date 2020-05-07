@@ -2,7 +2,7 @@ PLS GIV ARG? STDIO? FIO?
 
 HAI ME TEH INTEGR FUNC MAIN
     I HAS A VARBL tmpstr TEH STRIN
-    I HAS A VARBL maxsize TEH INTEGR ITZ 10000
+    I HAS A VARBL maxsize TEH INTEGR ITZ 10000000
 
     DELET NEXTARG WIT KTHX
     I HAS A VARBL filename TEH STRIN ITZ NEXTARG WIT KTHX
@@ -27,6 +27,7 @@ HAI ME TEH INTEGR FUNC MAIN
             DELET file
 
             suffixstr ITZ ITOA WIT suffix KTHX
+            suffix ITZ suffix PLUZ 1
             tmpstr ITZ CONCAT IN filename WIT suffixstr KTHX
             file ITZ OPEN WIT tmpstr KTHX
 

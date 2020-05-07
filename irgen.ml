@@ -28,6 +28,7 @@ let translate (mod_name : string) (p : smodule) =
   let i64_t = L.i64_type context
   and i32_t = L.i32_type context
   and i8_t = L.i8_type context
+  and i1_t = L.i1_type context
   and void_t = L.void_type context in
 
   (* Helper to convert A type to L type *)
@@ -35,7 +36,7 @@ let translate (mod_name : string) (p : smodule) =
     try
       match t with
       | Int -> i32_t
-      | Bool -> i8_t
+      | Bool -> i1_t
       | Void -> void_t
       | TypIdent s -> L.pointer_type (StringMap.find s !class_lltype_map)
       | PtrAsInt -> i64_t
@@ -270,7 +271,7 @@ let translate (mod_name : string) (p : smodule) =
     let rec build_expr builder ((_, e) : sexpr) =
       match e with
       | SIntLit i -> L.const_int i32_t i
-      | SBoolLit b -> L.const_int i8_t (if b then 1 else 0)
+      | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SStrLit s ->
           let const_str = L.build_global_stringptr s "str_lit" builder in
           let new_strin = build_expr builder (TypIdent "STRIN", SNewInstance "STRIN") in

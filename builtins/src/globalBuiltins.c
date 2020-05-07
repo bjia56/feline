@@ -39,5 +39,5 @@ struct STRIN* ITOA(int x) {
     result->contents = (char*) malloc(sizeof(char) * (MAX_INT_STRLEN + 1));
     sprintf(result->contents, "%d", x);
     result->length = strlen(result->contents);
-    return result
+    return result;
 }

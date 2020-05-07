@@ -25,5 +25,7 @@ struct STRIN* NEXTARG() {
     result->contents[arglen] = '\0';
     result->length = arglen;
 
+    global_argc_index++;
+
     return result;
 }
