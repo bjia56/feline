@@ -3,6 +3,7 @@ module StringMap = Map.Make (String)
 let builtins_list = [
     STDIO.module_signature;
     FIO.module_signature;
+    ARG.module_signature;
     GlobalBuiltins.module_signature;
 ]
 

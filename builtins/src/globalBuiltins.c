@@ -22,3 +22,22 @@ void STRIN_DES(struct STRIN* x) {
     x->contents = 0;
     x->length = 0;
 }
+
+struct STRIN* STRIN_CONCAT(struct STRIN* x, struct STRIN* y) {
+    struct STRIN* result = (struct STRIN*) malloc(sizeof(struct STRIN));
+    result->length = x->length + y->length;
+    result->contents = (char*) malloc(sizeof(char) * (result->length + 1));
+    strncpy(result->contents, x->contents, x->length);
+    strncpy(result->contents + x->length, y->contents, y->length);
+    result->contents[result->length] = '\0';
+    return result;
+}
+
+struct STRIN* ITOA(int x) {
+    const size_t MAX_INT_STRLEN = 20;
+    struct STRIN* result = (struct STRIN*) malloc(sizeof(struct STRIN));
+    result->contents = (char*) malloc(sizeof(char) * (MAX_INT_STRLEN + 1));
+    sprintf(result->contents, "%d", x);
+    result->length = strlen(result->contents);
+    return result
+}
