@@ -8,7 +8,7 @@ let ast =
         {
           cname = "FYL";
           pubmembers = [];
-          privmembers = [ (PtrAsInt, "handle"); (Int, "isOpen") ];
+          privmembers = [ (PtrAsInt, "path"); (PtrAsInt, "handle") ];
           pubfuncs =
             [
               {
@@ -23,6 +23,12 @@ let ast =
                 formals = [];
                 body = [ Return (StrLit "") ];
               };
+              {
+                rtyp = Int;
+                fname = "SYZ";
+                formals = [];
+                body = [ Return (IntLit 0) ];
+              };
             ];
           privfuncs = [];
           cons = [];
@@ -35,8 +41,20 @@ let ast =
           rtyp = TypIdent "FYL";
           fname = "OPEN";
           formals = [ (TypIdent "STRIN", "path") ];
-          body = [];
+          body = [ Return (NewInstance "FYL") ];
         };
+        {
+          rtyp = Bool;
+          fname = "IZFYL";
+          formals = [ (TypIdent "STRIN", "path") ];
+          body = [ Return (BoolLit true) ];
+        };
+        {
+          rtyp = Bool;
+          fname = "IZDYR";
+          formals = [ (TypIdent "STRIN", "path") ];
+          body = [ Return (BoolLit true) ];
+         };
       ];
     globals = [];
   }

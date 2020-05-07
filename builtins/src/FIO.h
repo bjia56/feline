@@ -4,8 +4,8 @@
 #include "stdio.h"
 
 struct FYL {
+    char* path;
     FILE* handle;
-    int isOpen;
 };
 
 #endif
