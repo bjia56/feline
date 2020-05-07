@@ -363,7 +363,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let locals = locals @ [ (ty, name) ] in
           let symbols = StringMap.add name ty symbols in
           let () = check_binds "local" locals in
-          (SExpr (ty, SIdent name), locals, symbols)
+          (SBind (ty, name), locals, symbols)
       | BindAssign (b, e) ->
           let ty, name = b in
           let locals = locals @ [ (ty, name) ] in
@@ -669,7 +669,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let locals = locals @ [ (ty, name) ] in
           let symbols = StringMap.add name ty symbols in
           let () = check_binds "local" locals in
-          (SExpr (ty, SIdent name), locals, symbols)
+          (SBind (ty, name), locals, symbols)
       | BindAssign (b, e) ->
           let ty, name = b in
           let locals = locals @ [ (ty, name) ] in
@@ -994,7 +994,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let locals = locals @ [ (ty, name) ] in
           let symbols = StringMap.add name ty symbols in
           let () = check_binds "local" locals in
-          (SExpr (ty, SIdent name), locals, symbols)
+          (SBind (ty, name), locals, symbols)
       | BindAssign (b, e) ->
           let ty, name = b in
           let locals = locals @ [ (ty, name) ] in
@@ -1314,7 +1314,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let locals = locals @ [ (ty, name) ] in
           let symbols = StringMap.add name ty symbols in
           let () = check_binds "local" locals in
-          (SExpr (ty, SIdent name), locals, symbols)
+          (SBind (ty, name), locals, symbols)
       | BindAssign (b, e) ->
           let ty, name = b in
           let locals = locals @ [ (ty, name) ] in
