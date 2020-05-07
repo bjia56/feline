@@ -1,6 +1,11 @@
 module StringMap = Map.Make (String)
 
-let builtins_list = [ STDIO.module_signature; GlobalBuiltins.module_signature ]
+let builtins_list = [
+    STDIO.module_signature;
+    FIO.module_signature;
+    ARG.module_signature;
+    GlobalBuiltins.module_signature;
+]
 
 let builtin_modules =
   let visit_module m (name, ast) = StringMap.add name ast m in

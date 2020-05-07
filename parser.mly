@@ -124,8 +124,8 @@ stmt:
     | expr NEWLINE                                   { Expr($1) }
     | GIVEZ expr NEWLINE                             { Return($2) }
     | IF expr NEWLINE stmt_list KTHX                 { If($2, $4)}
-    | IF expr NEWLINE stmt_list ELS stmt_list        { IfElse($2, $4, $6) }
-    | WYL expr stmt_list                             { While($2, $3) }
+    | IF expr NEWLINE stmt_list ELS stmt_list KTHX   { IfElse($2, $4, $6) }
+    | WYL expr stmt_list KTHX                        { While($2, $3) }
     | IDENT IN IDENT ITZ expr NEWLINE                { ClassMemRassn($1, $3, $5) }
     | IDENT IN DIS ITZ expr NEWLINE                  { ClassMemRassn($1, "DIS", $5) }
     | DELET expr NEWLINE                             { Dealloc($2) }

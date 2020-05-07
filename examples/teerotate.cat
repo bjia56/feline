@@ -1,0 +1,46 @@
+PLS GIV ARG? STDIO? FIO?
+
+HAI ME TEH INTEGR FUNC MAIN
+    I HAS A VARBL tmpstr TEH STRIN
+    I HAS A VARBL maxsize TEH INTEGR ITZ 10000000
+
+    DELET NEXTARG WIT KTHX
+    I HAS A VARBL filename TEH STRIN ITZ NEXTARG WIT KTHX
+
+    I HAS A VARBL err TEH STRIN
+    IF IZDYR WIT filename KTHX
+        err ITZ "path is a directory, cannot create log file"
+        MEOW WIT err KTHX
+        DELET err
+        GIVEZ 1
+    KTHX
+
+    I HAS A VARBL file TEH FYL ITZ OPEN WIT filename KTHX
+    I HAS A VARBL suffix TEH INTEGR ITZ 1
+    I HAS A VARBL suffixstr TEH STRIN
+
+    I HAS A VARBL line TEH STRIN
+    WYL YEZ
+        line ITZ NOM WIT KTHX
+
+        WYL SYZ IN file WIT KTHX BIGGR THAN maxsize
+            DELET file
+
+            suffixstr ITZ ITOA WIT suffix KTHX
+            suffix ITZ suffix PLUZ 1
+            tmpstr ITZ CONCAT IN filename WIT suffixstr KTHX
+            file ITZ OPEN WIT tmpstr KTHX
+
+            DELET tmpstr
+            DELET suffixstr
+        KTHX
+
+        MEOW WIT line KTHX
+        MEOW IN file WIT line KTHX
+
+        DELET line
+    KTHX
+
+    DELET file
+    DELET filename
+KTHXBAI
