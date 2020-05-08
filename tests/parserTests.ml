@@ -1,7 +1,7 @@
 open Ast
 
 let test_parse_class () =
-    let raw_class = "
+    let raw = "
 HAI ME TEH CLAS foo
 
 EVRYONE:
@@ -21,9 +21,10 @@ MESELF:
     KTHXBAI
 KTHXBAI
 " in
-    let lex = Lexing.from_string raw_class in
+    let lex = Lexing.from_string raw in
     try (
         let ast = Parser.module_decl Scanner.token lex in
+        let () = assert (0 = List.length ast.globals) in
         let () = assert (0 = List.length ast.functions) in
         let () = assert (1 = List.length ast.classes) in
 
@@ -43,6 +44,29 @@ KTHXBAI
     ) with
     | Parsing.Parse_error -> failwith (Utils.syntax_error_string lex)
 
+let test_parse_globals () =
+    let raw = "
+HAI ME TEH VARBL x TEH STRIN
+HAI ME TEH VARBL y TEH INTEGR
+" in
+    let lex = Lexing.from_string raw in
+    try (
+        let ast = Parser.module_decl Scanner.token lex in
+		let () = assert (2 = List.length ast.globals) in
+        let () = assert (0 = List.length ast.functions) in
+        let () = assert (0 = List.length ast.classes) in
+
+		let first_typ, first_name = List.nth ast.globals 0 in
+		let second_typ, second_name = List.nth ast.globals 1 in
+
+        let () = assert (first_typ = TypIdent "STRIN") in
+        let () = assert (first_name = "x") in
+        let () = assert (second_typ = Int) in
+        let () = assert (second_name = "y") in
+        ()
+    ) with
+    | Parsing.Parse_error -> failwith (Utils.syntax_error_string lex)
+
 
 let run_tests () =
     let () = print_endline "Running ParserTests..." in
@@ -50,5 +74,9 @@ let run_tests () =
     let () = print_endline "Running ParserTests.test_parse_class" in
     let () = test_parse_class () in
     let () = print_endline "Completed ParserTests.test_parse_class" in
+
+    let () = print_endline "Running ParserTests.test_parse_globals" in
+    let () = test_parse_globals () in
+    let () = print_endline "Completed ParserTests.test_parse_globals" in
 
     ()

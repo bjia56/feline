@@ -154,7 +154,11 @@ class_decl:
         }
 
 class_internals:
-    | EVRYONE NEWLINE class_pub_internals class_internals
+    | NEWLINE class_internals { $2 }
+    | class_internal_scopes { $1 }
+
+class_internal_scopes:
+    | EVRYONE NEWLINE class_pub_internals class_internal_scopes
         {
             {
                 cname="";
@@ -166,7 +170,7 @@ class_internals:
                 des=$3.des @ $4.des;
             }
         }
-    | MESELF NEWLINE class_priv_internals class_internals
+    | MESELF NEWLINE class_priv_internals class_internal_scopes
         {
             {
                 cname="";
@@ -178,18 +182,9 @@ class_internals:
                 des=$4.des;
             }
         }
-    | /* nothing */
-        {
-            {
-                cname="";
-                pubmembers=[];
-                privmembers=[];
-                pubfuncs=[];
-                privfuncs=[];
-                cons=[];
-                des=[];
-            }
-        }
+    | EVRYONE NEWLINE class_pub_internals { $3 }
+    | MESELF NEWLINE class_priv_internals { $3 }
+
 
 class_priv_internals:
     | NEWLINE class_priv_internals { $2 }
