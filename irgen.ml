@@ -537,6 +537,7 @@ let translate (mod_name : string) (p : smodule) =
   let () =
     if !has_main then
       let _ = build_function_body main_fdecl in
+      print_endline("there is no main function.");
       ()
     else ()
   in
