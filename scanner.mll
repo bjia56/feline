@@ -64,6 +64,6 @@ rule token =
       '?' as id                            { IDENT_QUESTION(List.hd (String.split_on_char '?' id )) }
     | eof                                  { EOF }
 
-    and comment = parse
+and comment = parse
     "=^..^=" { token lexbuf }
     | _      { comment lexbuf }
