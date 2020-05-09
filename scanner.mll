@@ -5,6 +5,7 @@ open Utils
 
 rule token =
     parse [' ' '\t' '\r']                  { token lexbuf }
+    | "=^..^="                             { comment lexbuf }
     | ['\n']                               { Lexing.new_line lexbuf; NEWLINE }
     | "I"                                  { I }
     | "HAS"                                { HAS }
@@ -62,3 +63,7 @@ rule token =
       ['a'-'z' 'A'-'Z' '_' '0'-'9']*
       '?' as id                            { IDENT_QUESTION(List.hd (String.split_on_char '?' id )) }
     | eof                                  { EOF }
+
+    and comment = parse
+    "=^..^=" { token lexbuf }
+    | _      { comment lexbuf }
