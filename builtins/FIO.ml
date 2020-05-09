@@ -8,7 +8,7 @@ let ast =
         {
           cname = "FYL";
           pubmembers = [];
-          privmembers = [ (PtrAsInt, "path"); (PtrAsInt, "handle") ];
+          privmembers = [ (PtrAsInt, "path"); (PtrAsInt, "handle"); (Bool, "eof") ];
           pubfuncs =
             [
               {
@@ -29,6 +29,12 @@ let ast =
                 formals = [];
                 body = [ Return (IntLit 0) ];
               };
+              {
+                rtyp = Bool;
+                fname = "FIN";
+                formals = [];
+                body = [ Return (BoolLit true) ];
+              }
             ];
           privfuncs = [];
           cons = [];

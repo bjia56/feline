@@ -6,6 +6,7 @@
 struct FYL {
     char* path;
     FILE* handle;
+    char eof;
 };
 
 #endif

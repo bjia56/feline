@@ -3,9 +3,9 @@
 
 #include "globalBuiltins.h"
 
-int global_argc_index;
-int global_argc;
-char** global_argv;
+int global_argc_index = 0;
+int global_argc = 0;
+char** global_argv = NULL;
 
 void main_load_args(int argc, char** argv) {
     global_argc_index = 0;
@@ -20,7 +20,9 @@ struct STRIN* NEXTARG() {
 
     size_t arglen = strlen(global_argv[global_argc_index]);
     struct STRIN* result = (struct STRIN*) malloc(sizeof(struct STRIN));
+    memset(result, 0, sizeof(struct STRIN));
     result->contents = (char*) malloc(sizeof(char) * (arglen + 1));
+    memset(result->contents, 0, sizeof(char) * (arglen + 1));
     strncpy(result->contents, global_argv[global_argc_index], arglen);
     result->contents[arglen] = '\0';
     result->length = arglen;

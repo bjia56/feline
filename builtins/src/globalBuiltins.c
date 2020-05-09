@@ -8,6 +8,7 @@ void STRIN_from_cstring(struct STRIN* x, const char* c) {
     x->length = strlen(c);
     free(x->contents);
     x->contents = (char*) malloc(sizeof(char) * (x->length + 1));
+    memset(x->contents, 0, sizeof(char) * (x->length + 1));
     strncpy(x->contents, c, x->length);
     x->contents[x->length] = '\0';
 }
@@ -25,8 +26,12 @@ void STRIN_DES(struct STRIN* x) {
 
 struct STRIN* STRIN_CONCAT(struct STRIN* x, struct STRIN* y) {
     struct STRIN* result = (struct STRIN*) malloc(sizeof(struct STRIN));
+    memset(result, 0, sizeof(struct STRIN));
+
     result->length = x->length + y->length;
     result->contents = (char*) malloc(sizeof(char) * (result->length + 1));
+    memset(result->contents, 0, sizeof(char) * (result->length + 1));
+
     strncpy(result->contents, x->contents, x->length);
     strncpy(result->contents + x->length, y->contents, y->length);
     result->contents[result->length] = '\0';
@@ -36,7 +41,9 @@ struct STRIN* STRIN_CONCAT(struct STRIN* x, struct STRIN* y) {
 struct STRIN* ITOA(int x) {
     const size_t MAX_INT_STRLEN = 20;
     struct STRIN* result = (struct STRIN*) malloc(sizeof(struct STRIN));
+    memset(result, 0, sizeof(struct STRIN));
     result->contents = (char*) malloc(sizeof(char) * (MAX_INT_STRLEN + 1));
+    memset(result->contents, 0, sizeof(char) * (MAX_INT_STRLEN + 1));
     sprintf(result->contents, "%d", x);
     result->length = strlen(result->contents);
     return result;

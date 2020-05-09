@@ -18,6 +18,12 @@ let ast =
           formals = [];
           body = [ Return (StrLit "") ];
         };
+        {
+          rtyp = Bool;
+          fname = "FIN";
+          formals = [];
+          body = [ Return (BoolLit true) ];
+        };
       ];
     globals = [];
   }

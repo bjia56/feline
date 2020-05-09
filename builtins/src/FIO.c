@@ -24,15 +24,25 @@ void FYL_MEOW(struct FYL* x, struct STRIN* y) {
 }
 
 struct STRIN* FYL_NOM(struct FYL* x) {
+    if (x->eof) {
+        return NULL;
+    }
+
     char *line = NULL;
     size_t len = 0;
     size_t nread = getline(&line, &len, x->handle);
+
+    if (nread == -1) {
+        x->eof = 1;
+        return NULL;
+    }
 
     if (line[nread - 1] == '\n') {
         line[nread - 1] = '\0'; // trim off delimiter
     }
 
     struct STRIN* result = (struct STRIN*)malloc(sizeof(struct STRIN));
+    memset(result, 0, sizeof(struct STRIN));
     result->length = len;
     result->contents = line;
 
@@ -45,6 +55,10 @@ int FYL_SYZ(struct FYL* x) {
     return st.st_size;
 }
 
+char FYL_FIN(struct FYL* x) {
+    return x->eof;
+}
+
 struct FYL* OPEN(struct STRIN* path) {
     FILE* handle = fopen(path->contents, "a+");
     if (handle == NULL) {
@@ -52,12 +66,15 @@ struct FYL* OPEN(struct STRIN* path) {
     }
 
     char* cpath = (char*)malloc(sizeof(char) * (path->length + 1));
+    memset(cpath, 0, sizeof(char) * (path->length + 1));
     strncpy(cpath, path->contents, path->length);
     cpath[path->length] = '\0';
 
     struct FYL* result = (struct FYL*)malloc(sizeof(struct FYL));
+    memset(result, 0, sizeof(struct FYL));
     result->handle = handle;
     result->path = cpath;
+    result->eof = 0;
 
     return result;
 }
