@@ -30,15 +30,24 @@ module_decl:
     | imports_and_decls EOF { $1 }
 
 imports_and_decls:
+    | NEWLINE imports_and_decls         { $2 }
     | imports NEWLINE imports_and_decls { { imports=$1 @ $3.imports; classes=$3.classes; functions=$3.functions; globals=$3.globals } }
     | decls                             { $1 }
 
 decls:
-    | /* nothing */            { { imports=[]; classes=[]; functions=[]; globals=[] } }
-    | func_decl NEWLINE decls  { { imports=[]; classes=$3.classes; functions=$1::$3.functions; globals=$3.globals } }
-    | glob_vdecl NEWLINE decls { { imports=[]; classes=$3.classes; functions=$3.functions; globals=$1::$3.globals } }
-    | class_decl NEWLINE decls { { imports=[]; classes=$1::$3.classes; functions=$3.functions; globals=$3.globals } }
-    | NEWLINE decls            { $2 }
+    | func_decl                          { { imports=[]; classes=[]; functions=[$1]; globals=[] } }
+    | glob_vdecl                         { { imports=[]; classes=[]; functions=[]; globals=[$1] } }
+    | class_decl                         { { imports=[]; classes=[$1]; functions=[]; globals=[] } }
+    | func_decl NEWLINE decls_continued  { { imports=[]; classes=$3.classes; functions=$1::$3.functions; globals=$3.globals } }
+    | glob_vdecl NEWLINE decls_continued { { imports=[]; classes=$3.classes; functions=$3.functions; globals=$1::$3.globals } }
+    | class_decl NEWLINE decls_continued { { imports=[]; classes=$1::$3.classes; functions=$3.functions; globals=$3.globals } }
+
+decls_continued:
+    | /* nothing */                      { { imports=[]; classes=[]; functions=[]; globals=[] } }
+    | func_decl NEWLINE decls_continued  { { imports=[]; classes=$3.classes; functions=$1::$3.functions; globals=$3.globals } }
+    | glob_vdecl NEWLINE decls_continued { { imports=[]; classes=$3.classes; functions=$3.functions; globals=$1::$3.globals } }
+    | class_decl NEWLINE decls_continued { { imports=[]; classes=$1::$3.classes; functions=$3.functions; globals=$3.globals } }
+    | NEWLINE decls_continued            { $2 }
 
 imports:
     | PLS GIV imports_list { $3 }
@@ -154,7 +163,11 @@ class_decl:
         }
 
 class_internals:
-    | EVRYONE NEWLINE class_pub_internals class_internals
+    | NEWLINE class_internals { $2 }
+    | class_internal_scopes { $1 }
+
+class_internal_scopes:
+    | EVRYONE NEWLINE class_pub_internals class_internal_scopes
         {
             {
                 cname="";
@@ -166,7 +179,7 @@ class_internals:
                 des=$3.des @ $4.des;
             }
         }
-    | MESELF NEWLINE class_priv_internals class_internals
+    | MESELF NEWLINE class_priv_internals class_internal_scopes
         {
             {
                 cname="";
@@ -178,18 +191,9 @@ class_internals:
                 des=$4.des;
             }
         }
-    | /* nothing */
-        {
-            {
-                cname="";
-                pubmembers=[];
-                privmembers=[];
-                pubfuncs=[];
-                privfuncs=[];
-                cons=[];
-                des=[];
-            }
-        }
+    | EVRYONE NEWLINE class_pub_internals { $3 }
+    | MESELF NEWLINE class_priv_internals { $3 }
+
 
 class_priv_internals:
     | NEWLINE class_priv_internals { $2 }
@@ -240,8 +244,8 @@ class_pub_internals:
                 privmembers=[];
                 pubfuncs=$1::$3.pubfuncs;
                 privfuncs=[];
-                cons=[];
-                des=[];
+                cons=$3.cons;
+                des=$3.des;
             }
         }
     | class_vdecl NEWLINE class_pub_internals
