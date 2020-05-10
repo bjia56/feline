@@ -336,13 +336,13 @@ let rec check_module (all_modules : module_decl StringMap.t)
           ( (instance_type, SClassMemAccess (mem, instance, find_mem_idx mem c)),
             sym_tbl )
     in
-   
+
 		let check_bool_expr e sym_tbl =
 		  let ((t, e'), m) = check_expr e sym_tbl in
 		  match t with
 		  | Bool -> (t, e')
 		  | _ -> raise (Failure ("expected Boolean expression"))
-		in 
+		in
 
     let rec check_stmt_list stmt_list locals symbols =
       match stmt_list with
@@ -363,7 +363,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let locals = locals @ [ (ty, name) ] in
           let symbols = StringMap.add name ty symbols in
           let () = check_binds "local" locals in
-          (SBind (ty, name), locals, symbols)
+          (SBind b, locals, symbols)
       | BindAssign (b, e) ->
           let ty, name = b in
           let locals = locals @ [ (ty, name) ] in
@@ -412,7 +412,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
                       non-object type")
           in
           (SDealloc (t, e'), locals, symbols)
-       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols), 
+       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols),
        					   locals,
        					   symbols)
        | IfElse (e, sl1, sl2) -> (SIfElse(check_bool_expr e symbols, check_stmt_list sl1 locals symbols,
@@ -521,7 +521,15 @@ let rec check_module (all_modules : module_decl StringMap.t)
       | IntLit l -> ((Int, SIntLit l), sym_tbl)
       | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
       | StrLit l -> ((TypIdent "STRIN", SStrLit l), sym_tbl)
-      | Ident var -> ((type_of_identifier var sym_tbl, SIdent var), sym_tbl)
+      | Ident var -> 
+      		(* If var is a member of this class, return SClassMemAccess *)
+  			(match type_of_identifier var sym_tbl with
+  			| TypIdent c when c = calling_class.cname ->
+  					((type_of_identifier var sym_tbl, 
+  						SClassMemAccess(var, calling_class.cname, find_mem_idx var calling_class)), sym_tbl)
+  			| _ -> 
+	      	  	(* Otherwise, just return SIdent *)
+	      		((type_of_identifier var sym_tbl, SIdent var), sym_tbl) )
       | Binop (e1, op, e2) ->
           let (t1, e1'), sym_tbl = check_expr e1 sym_tbl in
           let (t2, e2'), sym_tbl = check_expr e2 sym_tbl in
@@ -546,22 +554,72 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let t = match op with Not -> Bool in
           ((t, SUnop (op, (t1, e1'))), m1)
       | Functcall (fname, args) ->
-          let fd = find_func fname in
-          let param_length = List.length fd.formals in
-          if List.length args != param_length then
-            raise
-              (Failure
-                 ( "expecting " ^ string_of_int param_length
-                 ^ " arguments in function call" ))
-          else
-            let check_call (ft, _) e =
-              let (et, e'), sym_tbl = check_expr e sym_tbl in
-              let err = "illegal argument found in function call" in
-              ((check_assign ft et err, e'), sym_tbl)
-            in
-            let args' = List.map2 check_call fd.formals args in
-            let args'' = List.map (fun (a, b) -> a) args' in
-            ((fd.rtyp, SFunctcall (fname, args'')), sym_tbl)
+     	  (* Search for this function name in the calling class *)
+     	  	( try 
+     	  		(* If program doesn't crash here, this means the func
+     	 	  	  is a public function of the calling class, 
+     	          and we return SClassFunctcall *)
+     	  		let fd = find_pub_func fname calling_class in
+     	  		let param_length = List.length fd.formals in
+	     	 	    if List.length args != param_length then
+	     	 	      raise
+			              (Failure
+			                 ( "expecting " ^ string_of_int param_length
+			                 ^ " arguments in function call" ))
+			        else 
+			        let check_call (ft, _) e =
+			              let (et, e'), sym_tbl = check_expr e sym_tbl in
+			              let err = "illegal argument found in function call" in
+			              ((check_assign ft et err, e'), sym_tbl)
+			            in
+			            let args' = List.map2 check_call fd.formals args in
+			            let args'' = List.map (fun (a, b) -> a) args' in
+			        ( (fd.rtyp, SClassFunctcall (calling_class.cname, (fname, args''))),
+              		sym_tbl )
+
+     	 	with Failure err -> 
+     	 	  try 
+     	 	  	  (* If program doesn't crash here, this means the func
+     	 	  	  is a private function of the calling class, 
+     	          and we return SClassFunctcall *)
+	     	 	    let fd = find_priv_func fname calling_class in
+	     	 	    let param_length = List.length fd.formals in
+	     	 	    if List.length args != param_length then
+	     	 	      raise
+			              (Failure
+			                 ( "expecting " ^ string_of_int param_length
+			                 ^ " arguments in function call" ))
+			        else 
+			        let check_call (ft, _) e =
+			              let (et, e'), sym_tbl = check_expr e sym_tbl in
+			              let err = "illegal argument found in function call" in
+			              ((check_assign ft et err, e'), sym_tbl)
+			            in
+			            let args' = List.map2 check_call fd.formals args in
+			            let args'' = List.map (fun (a, b) -> a) args' in
+			        ( (fd.rtyp, SClassFunctcall (calling_class.cname, (fname, args''))),
+              		sym_tbl )
+  	  
+		      with Failure err -> 
+		      	   (* This case is reached if the func is not in the 
+		      	   calling class, so we return a regular Functcall *)
+			       let fd = find_func fname in
+			          let param_length = List.length fd.formals in
+			          if List.length args != param_length then
+			            raise
+			              (Failure
+			                 ( "expecting " ^ string_of_int param_length
+			                 ^ " arguments in function call" ))
+			          else
+			            let check_call (ft, _) e =
+			              let (et, e'), sym_tbl = check_expr e sym_tbl in
+			              let err = "illegal argument found in function call" in
+			              ((check_assign ft et err, e'), sym_tbl)
+			            in
+			            let args' = List.map2 check_call fd.formals args in
+			            let args'' = List.map (fun (a, b) -> a) args' in
+			            ((fd.rtyp, SFunctcall (fname, args'')), sym_tbl)         )
+ 
       | NewInstance cls_name ->
           (* Check if it is a valid class *)
           let _ = find_class cls_name in
@@ -605,7 +663,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           if instance = "DIS" then
             ( (fd.rtyp, SClassFunctcall (calling_class.cname, (fname, args''))),
               sym_tbl )
-          else 
+          else
           	( (fd.rtyp, SClassFunctcall (instance, (fname, args''))),
               sym_tbl )
       | ClassMemAccess (mem, instance) ->
@@ -651,7 +709,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
 		  match t with
 		  | Bool -> (t, e')
 		  | _ -> raise (Failure ("expected Boolean expression"))
-		in 
+		in
     let rec check_stmt_list stmt_list locals symbols =
       match stmt_list with
       | [] -> []
@@ -669,7 +727,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let locals = locals @ [ (ty, name) ] in
           let symbols = StringMap.add name ty symbols in
           let () = check_binds "local" locals in
-          (SBind (ty, name), locals, symbols)
+          (SBind b, locals, symbols)
       | BindAssign (b, e) ->
           let ty, name = b in
           let locals = locals @ [ (ty, name) ] in
@@ -680,11 +738,18 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let _ = check_assign ty typ err in
           (SBindAssign ((ty, name), (typ, str)), locals, symbols)
       | Assign (var, e) ->
-          let lt = type_of_identifier var symbols
-          and (rt, e'), _ = check_expr e symbols in
-          let err = "illegal assignment in expression" in
-          let _ = check_assign lt rt err in
-          (SAssign ((lt, var), (rt, e')), locals, symbols)
+      	   let lt = type_of_identifier var symbols
+           and (rt, e'), _ = check_expr e symbols in
+           let err = "illegal assignment in expression" in
+           let _ = check_assign lt rt err in 
+			(* If var is a member of this class, return SClassMemAccess *)
+  			(match lt with
+  			| TypIdent c when c = calling_class.cname ->
+  					( SClassMemRassn ((lt, var), c, find_mem_idx var calling_class, (rt, e')),
+            		locals, symbols )
+  			| _ -> 
+	      	  	(* Otherwise, just return SAssign *)
+          		(SAssign ((lt, var), (rt, e')), locals, symbols)  )
       | Return e ->
           let (t, e'), _ = check_expr e symbols in
           if t = func.rtyp then (SReturn (t, e'), locals, symbols)
@@ -738,7 +803,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
                       non-object type")
           in
           (SDealloc (t, e'), locals, symbols)
-       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols), 
+       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols),
        					   locals,
        					   symbols)
        | IfElse (e, sl1, sl2) -> (SIfElse(check_bool_expr e symbols, check_stmt_list sl1 locals symbols,
@@ -846,7 +911,15 @@ let rec check_module (all_modules : module_decl StringMap.t)
       | IntLit l -> ((Int, SIntLit l), sym_tbl)
       | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
       | StrLit l -> ((TypIdent "STRIN", SStrLit l), sym_tbl)
-      | Ident var -> ((type_of_identifier var sym_tbl, SIdent var), sym_tbl)
+      | Ident var -> 
+      		(* If var is a member of this class, return SClassMemAccess *)
+  			(match type_of_identifier var sym_tbl with
+  			| TypIdent c when c = calling_class.cname ->
+  					((type_of_identifier var sym_tbl, 
+  						SClassMemAccess(var, calling_class.cname, find_mem_idx var calling_class)), sym_tbl)
+  			| _ -> 
+	      	  	(* Otherwise, just return SIdent *)
+	      		((type_of_identifier var sym_tbl, SIdent var), sym_tbl) )
       | Binop (e1, op, e2) ->
           let (t1, e1'), sym_tbl = check_expr e1 sym_tbl in
           let (t2, e2'), sym_tbl = check_expr e2 sym_tbl in
@@ -871,22 +944,71 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let t = match op with Not -> Bool in
           ((t, SUnop (op, (t1, e1'))), m1)
       | Functcall (fname, args) ->
-          let fd = find_func fname in
-          let param_length = List.length fd.formals in
-          if List.length args != param_length then
-            raise
-              (Failure
-                 ( "expecting " ^ string_of_int param_length
-                 ^ " arguments in function call" ))
-          else
-            let check_call (ft, _) e =
-              let (et, e'), sym_tbl = check_expr e sym_tbl in
-              let err = "illegal argument found in function call" in
-              ((check_assign ft et err, e'), sym_tbl)
-            in
-            let args' = List.map2 check_call fd.formals args in
-            let args'' = List.map (fun (a, b) -> a) args' in
-            ((fd.rtyp, SFunctcall (fname, args'')), sym_tbl)
+      		(* Search for this function name in the calling class *)
+     	  	( try 
+     	  		(* If program doesn't crash here, this means the func
+     	 	  	  is a public function of the calling class, 
+     	          and we return SClassFunctcall *)
+     	  		let fd = find_pub_func fname calling_class in
+     	  		let param_length = List.length fd.formals in
+	     	 	    if List.length args != param_length then
+	     	 	      raise
+			              (Failure
+			                 ( "expecting " ^ string_of_int param_length
+			                 ^ " arguments in function call" ))
+			        else 
+			        let check_call (ft, _) e =
+			              let (et, e'), sym_tbl = check_expr e sym_tbl in
+			              let err = "illegal argument found in function call" in
+			              ((check_assign ft et err, e'), sym_tbl)
+			            in
+			            let args' = List.map2 check_call fd.formals args in
+			            let args'' = List.map (fun (a, b) -> a) args' in
+			        ( (fd.rtyp, SClassFunctcall (calling_class.cname, (fname, args''))),
+              		sym_tbl )
+
+     	 	with Failure err -> 
+     	 	  try 
+     	 	  	  (* If program doesn't crash here, this means the func
+     	 	  	  is a private function of the calling class, 
+     	          and we return SClassFunctcall *)
+	     	 	    let fd = find_priv_func fname calling_class in
+	     	 	    let param_length = List.length fd.formals in
+	     	 	    if List.length args != param_length then
+	     	 	      raise
+			              (Failure
+			                 ( "expecting " ^ string_of_int param_length
+			                 ^ " arguments in function call" ))
+			        else 
+			        let check_call (ft, _) e =
+			              let (et, e'), sym_tbl = check_expr e sym_tbl in
+			              let err = "illegal argument found in function call" in
+			              ((check_assign ft et err, e'), sym_tbl)
+			            in
+			            let args' = List.map2 check_call fd.formals args in
+			            let args'' = List.map (fun (a, b) -> a) args' in
+			        ( (fd.rtyp, SClassFunctcall (calling_class.cname, (fname, args''))),
+              		sym_tbl )
+  	  
+		      with Failure err -> 
+		      	   (* This case is reached if the func is not in the 
+		      	   calling class, so we return a regular Functcall *)
+			       let fd = find_func fname in
+			          let param_length = List.length fd.formals in
+			          if List.length args != param_length then
+			            raise
+			              (Failure
+			                 ( "expecting " ^ string_of_int param_length
+			                 ^ " arguments in function call" ))
+			          else
+			            let check_call (ft, _) e =
+			              let (et, e'), sym_tbl = check_expr e sym_tbl in
+			              let err = "illegal argument found in function call" in
+			              ((check_assign ft et err, e'), sym_tbl)
+			            in
+			            let args' = List.map2 check_call fd.formals args in
+			            let args'' = List.map (fun (a, b) -> a) args' in
+			            ((fd.rtyp, SFunctcall (fname, args'')), sym_tbl)         )
       | NewInstance cls_name ->
           (* Check if it is a valid class *)
           let _ = find_class cls_name in
@@ -930,7 +1052,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           if instance = "DIS" then
             ( (fd.rtyp, SClassFunctcall (calling_class.cname, (fname, args''))),
               sym_tbl )
-          else 
+          else
           	( (fd.rtyp, SClassFunctcall (instance, (fname, args''))),
               sym_tbl )
       | ClassMemAccess (mem, instance) ->
@@ -994,7 +1116,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let locals = locals @ [ (ty, name) ] in
           let symbols = StringMap.add name ty symbols in
           let () = check_binds "local" locals in
-          (SBind (ty, name), locals, symbols)
+          (SBind b, locals, symbols)
       | BindAssign (b, e) ->
           let ty, name = b in
           let locals = locals @ [ (ty, name) ] in
@@ -1005,11 +1127,18 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let _ = check_assign ty typ err in
           (SBindAssign ((ty, name), (typ, str)), locals, symbols)
       | Assign (var, e) ->
-          let lt = type_of_identifier var symbols
-          and (rt, e'), _ = check_expr e symbols in
-          let err = "illegal assignment in expression" in
-          let _ = check_assign lt rt err in
-          (SAssign ((lt, var), (rt, e')), locals, symbols)
+      	   let lt = type_of_identifier var symbols
+           and (rt, e'), _ = check_expr e symbols in
+           let err = "illegal assignment in expression" in
+           let _ = check_assign lt rt err in 
+			(* If var is a member of this class, return SClassMemAccess *)
+  			(match lt with
+  			| TypIdent c when c = calling_class.cname ->
+  					( SClassMemRassn ((lt, var), c, find_mem_idx var calling_class, (rt, e')),
+            		locals, symbols )
+  			| _ -> 
+	      	  	(* Otherwise, just return SAssign *)
+          		(SAssign ((lt, var), (rt, e')), locals, symbols)  )
       (* | Return e ->
          let ((t, e'), _) = check_expr e symbols in
          if t = func.rtyp then (SReturn (t, e'), locals, symbols)
@@ -1065,7 +1194,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
                       non-object type")
           in
           (SDealloc (t, e'), locals, symbols)
-       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols), 
+       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols),
        					   locals,
        					   symbols)
        | IfElse (e, sl1, sl2) -> (SIfElse(check_bool_expr e symbols, check_stmt_list sl1 locals symbols,
@@ -1166,7 +1295,15 @@ let rec check_module (all_modules : module_decl StringMap.t)
       | IntLit l -> ((Int, SIntLit l), sym_tbl)
       | BoolLit l -> ((Bool, SBoolLit l), sym_tbl)
       | StrLit l -> ((TypIdent "STRIN", SStrLit l), sym_tbl)
-      | Ident var -> ((type_of_identifier var sym_tbl, SIdent var), sym_tbl)
+      | Ident var -> 
+      		(* If var is a member of this class, return SClassMemAccess *)
+  			(match type_of_identifier var sym_tbl with
+  			| TypIdent c when c = calling_class.cname ->
+  					((type_of_identifier var sym_tbl, 
+  						SClassMemAccess(var, calling_class.cname, find_mem_idx var calling_class)), sym_tbl)
+  			| _ -> 
+	      	  	(* Otherwise, just return SIdent *)
+	      		((type_of_identifier var sym_tbl, SIdent var), sym_tbl) )
       | Binop (e1, op, e2) ->
           let (t1, e1'), sym_tbl = check_expr e1 sym_tbl in
           let (t2, e2'), sym_tbl = check_expr e2 sym_tbl in
@@ -1191,22 +1328,71 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let t = match op with Not -> Bool in
           ((t, SUnop (op, (t1, e1'))), m1)
       | Functcall (fname, args) ->
-          let fd = find_func fname in
-          let param_length = List.length fd.formals in
-          if List.length args != param_length then
-            raise
-              (Failure
-                 ( "expecting " ^ string_of_int param_length
-                 ^ " arguments in function call" ))
-          else
-            let check_call (ft, _) e =
-              let (et, e'), sym_tbl = check_expr e sym_tbl in
-              let err = "illegal argument found in function call" in
-              ((check_assign ft et err, e'), sym_tbl)
-            in
-            let args' = List.map2 check_call fd.formals args in
-            let args'' = List.map (fun (a, b) -> a) args' in
-            ((fd.rtyp, SFunctcall (fname, args'')), sym_tbl)
+      		(* Search for this function name in the calling class *)
+     	  	( try 
+     	  		(* If program doesn't crash here, this means the func
+     	 	  	  is a public function of the calling class, 
+     	          and we return SClassFunctcall *)
+     	  		let fd = find_pub_func fname calling_class in
+     	  		let param_length = List.length fd.formals in
+	     	 	    if List.length args != param_length then
+	     	 	      raise
+			              (Failure
+			                 ( "expecting " ^ string_of_int param_length
+			                 ^ " arguments in function call" ))
+			        else 
+			        let check_call (ft, _) e =
+			              let (et, e'), sym_tbl = check_expr e sym_tbl in
+			              let err = "illegal argument found in function call" in
+			              ((check_assign ft et err, e'), sym_tbl)
+			            in
+			            let args' = List.map2 check_call fd.formals args in
+			            let args'' = List.map (fun (a, b) -> a) args' in
+			        ( (fd.rtyp, SClassFunctcall (calling_class.cname, (fname, args''))),
+              		sym_tbl )
+
+     	 	with Failure err -> 
+     	 	  try 
+     	 	  	  (* If program doesn't crash here, this means the func
+     	 	  	  is a private function of the calling class, 
+     	          and we return SClassFunctcall *)
+	     	 	    let fd = find_priv_func fname calling_class in
+	     	 	    let param_length = List.length fd.formals in
+	     	 	    if List.length args != param_length then
+	     	 	      raise
+			              (Failure
+			                 ( "expecting " ^ string_of_int param_length
+			                 ^ " arguments in function call" ))
+			        else 
+			        let check_call (ft, _) e =
+			              let (et, e'), sym_tbl = check_expr e sym_tbl in
+			              let err = "illegal argument found in function call" in
+			              ((check_assign ft et err, e'), sym_tbl)
+			            in
+			            let args' = List.map2 check_call fd.formals args in
+			            let args'' = List.map (fun (a, b) -> a) args' in
+			        ( (fd.rtyp, SClassFunctcall (calling_class.cname, (fname, args''))),
+              		sym_tbl )
+  	  
+		      with Failure err -> 
+		      	   (* This case is reached if the func is not in the 
+		      	   calling class, so we return a regular Functcall *)
+			       let fd = find_func fname in
+			          let param_length = List.length fd.formals in
+			          if List.length args != param_length then
+			            raise
+			              (Failure
+			                 ( "expecting " ^ string_of_int param_length
+			                 ^ " arguments in function call" ))
+			          else
+			            let check_call (ft, _) e =
+			              let (et, e'), sym_tbl = check_expr e sym_tbl in
+			              let err = "illegal argument found in function call" in
+			              ((check_assign ft et err, e'), sym_tbl)
+			            in
+			            let args' = List.map2 check_call fd.formals args in
+			            let args'' = List.map (fun (a, b) -> a) args' in
+			            ((fd.rtyp, SFunctcall (fname, args'')), sym_tbl)         )
       | NewInstance cls_name ->
           (* Check if it is a valid class *)
           let _ = find_class cls_name in
@@ -1250,7 +1436,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           if instance = "DIS" then
             ( (fd.rtyp, SClassFunctcall (calling_class.cname, (fname, args''))),
               sym_tbl )
-          else 
+          else
           	( (fd.rtyp, SClassFunctcall (instance, (fname, args''))),
               sym_tbl )
       | ClassMemAccess (mem, instance) ->
@@ -1296,7 +1482,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
 		  match t with
 		  | Bool -> (t, e')
 		  | _ -> raise (Failure ("expected Boolean expression"))
-		in 
+		in
     let rec check_stmt_list stmt_list locals symbols =
       match stmt_list with
       | [] -> []
@@ -1314,7 +1500,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let locals = locals @ [ (ty, name) ] in
           let symbols = StringMap.add name ty symbols in
           let () = check_binds "local" locals in
-          (SBind (ty, name), locals, symbols)
+          (SBind b, locals, symbols)
       | BindAssign (b, e) ->
           let ty, name = b in
           let locals = locals @ [ (ty, name) ] in
@@ -1325,11 +1511,18 @@ let rec check_module (all_modules : module_decl StringMap.t)
           let _ = check_assign ty typ err in
           (SBindAssign ((ty, name), (typ, str)), locals, symbols)
       | Assign (var, e) ->
-          let lt = type_of_identifier var symbols
-          and (rt, e'), _ = check_expr e symbols in
-          let err = "illegal assignment in expression" in
-          let _ = check_assign lt rt err in
-          (SAssign ((lt, var), (rt, e')), locals, symbols)
+      	   let lt = type_of_identifier var symbols
+           and (rt, e'), _ = check_expr e symbols in
+           let err = "illegal assignment in expression" in
+           let _ = check_assign lt rt err in 
+			(* If var is a member of this class, return SClassMemAccess *)
+  			(match lt with
+  			| TypIdent c when c = calling_class.cname ->
+  					( SClassMemRassn ((lt, var), c, find_mem_idx var calling_class, (rt, e')),
+            		locals, symbols )
+  			| _ -> 
+	      	  	(* Otherwise, just return SAssign *)
+          		(SAssign ((lt, var), (rt, e')), locals, symbols)  )
       (* | Return e ->
          let ((t, e'), _) = check_expr e symbols in
          if t = func.rtyp then (SReturn (t, e'), locals, symbols)
@@ -1385,7 +1578,7 @@ let rec check_module (all_modules : module_decl StringMap.t)
                       non-object type")
           in
           (SDealloc (t, e'), locals, symbols)
-       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols), 
+       | If (e, sl) -> (SIf(check_bool_expr e symbols, check_stmt_list sl locals symbols),
        					   locals,
        					   symbols)
        | IfElse (e, sl1, sl2) -> (SIfElse(check_bool_expr e symbols, check_stmt_list sl1 locals symbols,

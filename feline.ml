@@ -80,15 +80,20 @@ let obj_file_of_ir_file (ir_file : string) =
   if ret <> 0 then raise (Failure ("llc exited with code " ^ string_of_int ret))
   else out
 
-let gcc_objects (output : string) (obj_files : string list) =
+let gcc_objects (gcc_static : bool) (output : string) (obj_files : string list)
+    =
   let obj_arg_list =
     List.fold_left
       (fun acc obj_file -> acc ^ " " ^ obj_file)
       (List.hd obj_files) (List.tl obj_files)
   in
   let cmd =
-    "gcc -o " ^ output ^ " " ^ obj_arg_list ^ " "
-    ^ BuiltinsLoader.library_src_dir ^ "/*.c"
+    if gcc_static then
+      "gcc -static -o " ^ output ^ " " ^ obj_arg_list ^ " "
+      ^ BuiltinsLoader.library_src_dir ^ "/*.c"
+    else
+      "gcc -o " ^ output ^ " " ^ obj_arg_list ^ " "
+      ^ BuiltinsLoader.library_src_dir ^ "/*.c"
   in
   let () = print_endline cmd in
   let ret = Sys.command cmd in
@@ -100,6 +105,7 @@ let _ =
   let testcases = ref false in
   let output = ref "a.out" in
   let ir_only = ref false in
+  let gcc_static = ref false in
   let speclist =
     [
       ( "-file",
@@ -108,6 +114,7 @@ let _ =
       ("-test", Arg.Set testcases, "Run compiler test cases");
       ("-out", Arg.Set_string output, "File name of compiled binary");
       ("-ir", Arg.Set ir_only, "Generate IR only");
+      ("-static", Arg.Set gcc_static, "Use gcc with flag -static");
     ]
   in
   let usage =
@@ -146,7 +153,7 @@ let _ =
           let () = obj_files := StringMap.map obj_file_of_ir_file !ir_files in
 
           let () =
-            gcc_objects !output
+            gcc_objects !gcc_static !output
               (List.map (fun (_, v) -> v) (StringMap.bindings !obj_files))
           in
 

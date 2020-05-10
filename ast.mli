@@ -4,13 +4,14 @@ type typ =
   | Null
   | Void
   | Int
+  | Long
   | Bool
   (* | Array of typ * int  *)
   (* TODO: Implement Arrays *)
   | Exception of string
   | TypIdent of string
   (* Used internally *)
-  | CStringPtr
+  | PtrAsInt
 
 type binop = Add | Sub | Mul | Div | Neq | Eq | Less | Greater | And | Or
 
@@ -40,7 +41,7 @@ type stmt =
   | BindAssign of bind * expr
   | Assign of string * expr
   | ClassMemRassn of string * string * expr
-  | Dealloc of expr 
+  | Dealloc of expr
   | If of expr * stmt list
   | IfElse of expr * stmt list * stmt list
   | While of expr * stmt list

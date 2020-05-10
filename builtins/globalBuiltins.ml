@@ -8,14 +8,28 @@ let ast =
         {
           cname = "STRIN";
           pubmembers = [];
-          privmembers = [ (CStringPtr, "contents"); (Int, "length") ];
-          pubfuncs = [];
+          privmembers = [ (PtrAsInt, "contents"); (Int, "length") ];
+          pubfuncs = [
+              {
+                  rtyp = TypIdent "STRIN";
+                  fname = "CONCAT";
+                  formals = [ (TypIdent "STRIN", "y") ];
+                  body = [ Return (NewInstance "STRIN") ];
+              }
+          ];
           privfuncs = [];
           cons = [ [] ];
           des = [ [] ];
         };
       ];
-    functions = [];
+    functions = [
+        {
+            rtyp = TypIdent "STRIN";
+            fname = "ITOA";
+            formals = [ (Int, "x") ];
+            body = [ Return (NewInstance "STRIN") ];
+        }
+    ];
     globals = [];
   }
 
