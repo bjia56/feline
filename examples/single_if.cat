@@ -1,0 +1,30 @@
+PLS GIV ARG?
+PLS GIV STDIO? FIO?
+
+HAI ME TEH VARBL a TEH INTEGR
+HAI ME TEH VARBL b TEH INTEGR
+
+
+HAI ME TEH INTEGR FUNC single_if WIT a TEH INTEGR AN WIT b TEH INTEGR
+        IF b SMALLR THAN a
+            a ITZ a MYNUZ b
+	    IF b SMALLR THAN a
+	        a ITZ a MYNUZ b
+	        IF b SMALLR THAN a
+                    a ITZ a MYNUZ b
+		KTHX
+	    KTHX	
+        ELS
+            b ITZ b MYNUZ a
+        KTHX
+    GIVEZ a
+    KTHXBAI
+
+HAI ME TEH INTEGR FUNC MAIN
+    I HAS A VARBL x TEH INTEGR
+    I HAS A VARBL y TEH INTEGR
+    x ITZ 14
+    y ITZ 2
+    MEOW WIT ITOA WIT single_if WIT x AN WIT y KTHX KTHX KTHX
+    GIVEZ 0
+KTHXBAI
