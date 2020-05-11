@@ -1,0 +1,35 @@
+HAI ME TEH CLAS foo
+EVRYONE:
+    DIS TEH CONS
+    KTHXBAI
+
+    DIS TEH VARBL baz TEH STRIN
+
+    DIS TEH INTEGR FUNC hi
+        I HAS A VARBL x TEH INTEGR
+        x ITZ 4
+        GIVEZ x
+    KTHXBAI
+
+    DIS TEH DES
+    KTHXBAI
+MESELF:
+    DIS TEH VARBL bar TEH STRIN
+
+    DIS TEH STRIN FUNC cap
+        I HAS A VARBL y TEH STRIN ITZ bar
+        GIVEZ y
+    KTHXBAI
+KTHXBAI
+
+HAI ME TEH FUNC MAIN
+    4 PLUZ 4
+    I HAS A VARBL obj TEH foo ITZ NU foo
+    baz IN obj
+    hi IN obj WIT KTHX
+    baz IN obj ITZ "dog"
+    I HAS A VARBL b TEH STRIN ITZ baz IN obj
+    I HAS A VARBL c TEH INTEGR ITZ hi IN obj WIT KTHX
+    b ITZ "cat"
+    I HAS A VARBL f TEH INTEGR ITZ bar IN obj
+KTHXBAI
