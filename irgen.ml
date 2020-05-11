@@ -216,12 +216,19 @@ let translate (mod_name : string) (p : smodule) =
   in
 
   (* Construct global vars *)
+  (* Preload imported vars first *)
+  let global_vars : L.llvalue StringMap.t =
+    let global_var m (t, n) =
+      StringMap.add n (L.declare_global (ltype_of_typ t) n the_module) m
+    in
+    List.fold_left global_var StringMap.empty p.sglobal_imports
+  in
   let global_vars : L.llvalue StringMap.t =
     let global_var m (t, n) =
       let init = init_of_typ t in
       StringMap.add n (L.define_global n init the_module) m
     in
-    List.fold_left global_var StringMap.empty p.sglobals
+    List.fold_left global_var global_vars p.sglobals
   in
 
   (* Define malloc *)
