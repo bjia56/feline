@@ -458,12 +458,12 @@ let translate (mod_name : string) (p : smodule) =
           print_endline("Single If called"); 
           let bool_val = build_expr builder predicate in
 
-          let then_bb = L.append_block context "then" the_function in
-          ignore (List.fold_left build_stmt (L.builder_at_end context then_bb) then_stmt);
-
           let end_bb = L.append_block context "if_end" the_function in
           let build_br_end = L.build_br end_bb in (* partial function *)
-          add_terminal (L.builder_at_end context then_bb) build_br_end;
+
+          let then_bb = L.append_block context "then" the_function in
+          add_terminal (List.fold_left build_stmt (L.builder_at_end context then_bb) then_stmt)
+          build_br_end;
 
           ignore(L.build_cond_br bool_val then_bb end_bb builder);
           L.builder_at_end context end_bb
@@ -472,15 +472,17 @@ let translate (mod_name : string) (p : smodule) =
           print_endline("If&Else called"); 
           let bool_val = build_expr builder predicate in
 
-          let then_bb = L.append_block context "then" the_function in
-          ignore (List.fold_left build_stmt (L.builder_at_end context then_bb) then_stmt);
-          let else_bb = L.append_block context "else" the_function in
-          ignore (List.fold_left build_stmt (L.builder_at_end context else_bb) else_stmt);
-
           let end_bb = L.append_block context "if_end" the_function in
           let build_br_end = L.build_br end_bb in (* partial function *)
-          add_terminal (L.builder_at_end context then_bb) build_br_end;
-          add_terminal (L.builder_at_end context else_bb) build_br_end;
+
+          let then_bb = L.append_block context "then" the_function in
+          add_terminal (List.fold_left build_stmt (L.builder_at_end context then_bb) then_stmt)
+          build_br_end;
+          
+
+          let else_bb = L.append_block context "else" the_function in
+          add_terminal (List.fold_left build_stmt (L.builder_at_end context else_bb) else_stmt)
+          build_br_end;
 
           ignore(L.build_cond_br bool_val then_bb else_bb builder);
           L.builder_at_end context end_bb
