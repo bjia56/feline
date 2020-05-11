@@ -1,0 +1,5 @@
+HAI ME TEH VARBL globalStr TEH STRIN
+
+HAI ME TEH FUNC InitGlobal
+    globalStr ITZ "Hello Global Module Test"
+KTHXBAI

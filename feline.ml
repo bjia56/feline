@@ -115,6 +115,7 @@ let _ =
       ("-out", Arg.Set_string output, "File name of compiled binary");
       ("-ir", Arg.Set ir_only, "Generate IR only");
       ("-static", Arg.Set gcc_static, "Use gcc with flag -static");
+      ("-debug", Arg.Set Irgen.is_debug, "Print debugging info in irgen");
     ]
   in
   let usage =

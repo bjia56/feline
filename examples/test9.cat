@@ -1,0 +1,20 @@
+HAI ME TEH CLAS foo
+EVRYONE:
+    DIS TEH CONS
+    KTHXBAI
+
+    DIS TEH VARBL baz TEH STRIN
+
+    DIS TEH DES
+    KTHXBAI
+MESELF:
+    DIS TEH VARBL bar TEH INTEGR
+
+    DIS TEH STRIN FUNC cap
+        I HAS A VARBL y TEH STRIN
+        I HAS A VARBL x TEH INTEGR
+        x ITZ 4
+        y ITZ "test"
+        GIVEZ y
+    KTHXBAI
+KTHXBAI

@@ -1,0 +1,38 @@
+HAI ME TEH CLAS foo
+EVRYONE:
+    DIS TEH CONS
+    KTHXBAI
+
+    DIS TEH VARBL baz TEH STRIN
+
+    DIS TEH INTEGR FUNC hi
+        I HAS A VARBL x TEH INTEGR
+        IF 4 SMALLR THAN 5
+            x ITZ 7
+        ELS
+            x ITZ 9
+        GIVEZ x
+    KTHXBAI
+
+    DIS TEH DES
+        I HAS A VARBL z TEH INTEGR ITZ 0
+        I HAS A VARBL e TEH INTEGR ITZ 2
+        WYL z SMALLR THAN 6
+            e ITZ e PLUZ 2
+    KTHXBAI
+
+MESELF:
+    DIS TEH VARBL bar TEH STRIN
+
+    DIS TEH STRIN FUNC cap
+        I HAS A VARBL y TEH STRIN ITZ bar
+        GIVEZ y
+    KTHXBAI
+KTHXBAI
+
+HAI ME TEH FUNC MAIN
+    IF YEZ
+        IF NO
+            4 PLUZ 5
+        ELS 6
+KTHXBAI

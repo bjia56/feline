@@ -1,28 +1,38 @@
 open Sast
 open Ast
 module L = Llvm
-module StringMap = Map.Make(String)
+module StringMap = Map.Make (String)
 
 exception Unimplemented of string
+
+let is_debug = ref false
+
+let print_debug (x : string) =
+    if !is_debug then
+        print_endline x
+    else
+        ()
 
 let main_fdecl =
   {
     srtyp = Int;
     sfname = "main";
-    sformals = [
-        (Int, "argc");
-        (PtrAsInt, "argv");
-    ];
-    sbody = [
-        SExpr (Void, SFunctcall ("main_load_args", [(Int, SIdent("argc")); (PtrAsInt, SIdent("argv"))]));
+    sformals = [ (Int, "argc"); (PtrAsInt, "argv") ];
+    sbody =
+      [
+        SExpr
+          ( Void,
+            SFunctcall
+              ( "main_load_args",
+                [ (Int, SIdent "argc"); (PtrAsInt, SIdent "argv") ] ) );
         SReturn (Int, SFunctcall ("MAIN", []));
-    ];
+      ];
   }
 
 let translate (mod_name : string) (p : smodule) =
   let context = L.global_context () in
-  let the_module = L.create_module context "feline" in
-  let class_lltype_map : (L.lltype StringMap.t) ref = ref StringMap.empty in
+  let the_module = L.create_module context mod_name in
+  let class_lltype_map : L.lltype StringMap.t ref = ref StringMap.empty in
 
   (* Get types from the context *)
   let i64_t = L.i64_type context
@@ -76,7 +86,7 @@ let translate (mod_name : string) (p : smodule) =
           let () = has_main := true in
           (* Construct wrapper around "MAIN" *)
           let ftype =
-              L.function_type (ltype_of_typ Int) (Array.of_list [ i32_t; i64_t ])
+            L.function_type (ltype_of_typ Int) (Array.of_list [ i32_t; i64_t ])
           in
           StringMap.add main_fdecl.sfname
             (L.define_function main_fdecl.sfname ftype the_module, main_fdecl)
@@ -206,12 +216,19 @@ let translate (mod_name : string) (p : smodule) =
   in
 
   (* Construct global vars *)
+  (* Preload imported vars first *)
+  let global_vars : L.llvalue StringMap.t =
+    let global_var m (t, n) =
+      StringMap.add n (L.declare_global (ltype_of_typ t) n the_module) m
+    in
+    List.fold_left global_var StringMap.empty p.sglobal_imports
+  in
   let global_vars : L.llvalue StringMap.t =
     let global_var m (t, n) =
       let init = init_of_typ t in
       StringMap.add n (L.define_global n init the_module) m
     in
-    List.fold_left global_var StringMap.empty p.sglobals
+    List.fold_left global_var global_vars p.sglobals
   in
 
   (* Define malloc *)
@@ -225,12 +242,19 @@ let translate (mod_name : string) (p : smodule) =
   let free_func : L.llvalue = L.declare_function "free" free_t the_module in
 
   (* Define STRIN conversion function *)
-  let strin_from_cstring_t : L.lltype = L.function_type void_t [| ltype_of_typ (TypIdent "STRIN"); L.pointer_type i8_t |] in
-  let strin_from_cstring_func : L.llvalue = L.declare_function "STRIN_from_cstring" strin_from_cstring_t the_module in
+  let strin_from_cstring_t : L.lltype =
+    L.function_type void_t
+      [| ltype_of_typ (TypIdent "STRIN"); L.pointer_type i8_t |]
+  in
+  let strin_from_cstring_func : L.llvalue =
+    L.declare_function "STRIN_from_cstring" strin_from_cstring_t the_module
+  in
 
   (* Define ARG preload function *)
   let load_args_t : L.lltype = L.function_type void_t [| i32_t; i64_t |] in
-  let load_args_func : L.llvalue = L.declare_function "main_load_args" load_args_t the_module in
+  let load_args_func : L.llvalue =
+    L.declare_function "main_load_args" load_args_t the_module
+  in
 
   (* Define imported functions *)
   let _ =
@@ -240,45 +264,48 @@ let translate (mod_name : string) (p : smodule) =
 
   (* Construct function body statements *)
   let build_function_body fdecl =
-    print_endline(fdecl.sfname);
+    print_debug fdecl.sfname;
     let the_function, _ = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
 
-    let add_local builder m (t, n) p=
-      print_endline(n);
+    let add_local builder m (t, n) p =
+      print_debug n;
       let local = L.build_alloca (ltype_of_typ t) n builder in
       ignore (L.build_store p local builder);
       StringMap.add n local m
-    in      
+    in
     (* Construct function args as local vars *)
     let add_formal builder m (t, n) p =
-      print_endline("Adding formal " ^ n);
+      print_debug ("Adding formal " ^ n);
       L.set_value_name n p;
       let local = L.build_alloca (ltype_of_typ t) n builder in
       ignore (L.build_store p local builder);
       StringMap.add n local m
     in
     (*let local_vars_args =*)
-      print_endline ("sformal lenght is " ^ string_of_int (List.length fdecl.sformals));
-      let local_vars_args =
-        List.fold_left2 (add_formal builder) StringMap.empty fdecl.sformals
-          (Array.to_list (L.params the_function))
+    print_debug
+      ("sformal lenght is " ^ string_of_int (List.length fdecl.sformals));
+    let local_vars_args =
+      List.fold_left2 (add_formal builder) StringMap.empty fdecl.sformals
+        (Array.to_list (L.params the_function))
       (*in
-      formals*)
+        formals*)
     in
-    print_endline ("local_vars_args cardinality is " ^ 
-                   string_of_int (StringMap.cardinal local_vars_args));
-    let local_vars : (L.llvalue StringMap.t) ref = ref local_vars_args in
+    print_debug
+      ( "local_vars_args cardinality is "
+      ^ string_of_int (StringMap.cardinal local_vars_args) );
+    let local_vars : L.llvalue StringMap.t ref = ref local_vars_args in
 
     (* Return the value for a variable or formal argument.
          Check local names first, then global names *)
     (* TODO dynamically scope for classes *)
-    print_endline ("local_vars cardinality is " ^
-                  string_of_int (StringMap.cardinal !local_vars));
+    print_debug
+      ( "local_vars cardinality is "
+      ^ string_of_int (StringMap.cardinal !local_vars) );
 
     let lookup n =
-      print_endline (string_of_int (StringMap.cardinal !local_vars));
-      print_endline (string_of_bool (StringMap.mem n !local_vars));      
+      print_debug (string_of_int (StringMap.cardinal !local_vars));
+      print_debug (string_of_bool (StringMap.mem n !local_vars));
       try StringMap.find n !local_vars
       with Not_found -> StringMap.find n global_vars
     in
@@ -286,20 +313,29 @@ let translate (mod_name : string) (p : smodule) =
     (* Construct code for an expression; return its value *)
     let rec build_expr builder ((_, e) : sexpr) =
       match e with
-      | SIntLit i -> print_endline("SIntLit called"); L.const_int i32_t i
-      | SBoolLit b -> print_endline("SBoolLit called");
-                      L.const_int i1_t (if b then 1 else 0)
+      | SIntLit i ->
+          print_debug "SIntLit called";
+          L.const_int i32_t i
+      | SBoolLit b ->
+          print_debug "SBoolLit called";
+          L.const_int i1_t (if b then 1 else 0)
       | SStrLit s ->
-          print_endline("SStrLit called");
+          print_debug "SStrLit called";
           let const_str = L.build_global_stringptr s "str_lit" builder in
-          let new_strin = build_expr builder (TypIdent "STRIN", SNewInstance "STRIN") in
-          let _ = L.build_call strin_from_cstring_func [| new_strin; const_str |] "" builder in
+          let new_strin =
+            build_expr builder (TypIdent "STRIN", SNewInstance "STRIN")
+          in
+          let _ =
+            L.build_call strin_from_cstring_func [| new_strin; const_str |] ""
+              builder
+          in
           new_strin
-      | SIdent s -> print_endline("SIdent called");
-                    print_endline("Looking up variable " ^ s);
-                    L.build_load (lookup s) s builder
+      | SIdent s ->
+          print_debug "SIdent called";
+          print_debug ("Looking up variable " ^ s);
+          L.build_load (lookup s) s builder
       | SBinop (e1, op, e2) ->
-          print_endline("SBinop called");
+          print_debug "SBinop called";
           let e1' = build_expr builder e1 and e2' = build_expr builder e2 in
           ( match op with
           | Add -> L.build_add
@@ -319,7 +355,7 @@ let translate (mod_name : string) (p : smodule) =
           in
           L.build_call load_args_func (Array.of_list llargs) "" builder
       | SFunctcall (f, args) ->
-          print_endline("SFunctcall called");
+          print_debug "SFunctcall called";
           let fdef, fdecl = StringMap.find f function_decls in
           let llargs =
             List.rev (List.map (build_expr builder) (List.rev args))
@@ -330,7 +366,7 @@ let translate (mod_name : string) (p : smodule) =
             let result = f ^ "_result" in
             L.build_call fdef (Array.of_list llargs) result builder
       | SNewInstance n ->
-          print_endline("SNewInstance called");
+          print_debug "SNewInstance called";
           let pltype = ltype_of_typ (TypIdent n) in
           let ltype = L.element_type pltype in
           (* Compute size of struct and cast to i32 *)
@@ -352,7 +388,7 @@ let translate (mod_name : string) (p : smodule) =
           (* Return instance *)
           inst
       | SClassFunctcall (inst, (f, args)) ->
-          print_endline("SClassFunctcall called");
+          print_debug "SClassFunctcall called";
           let v = lookup inst in
           let deref = inst ^ "_deref" in
           let v_deref = L.build_load v deref builder in
@@ -366,7 +402,7 @@ let translate (mod_name : string) (p : smodule) =
             let result = f ^ "_result" in
             L.build_call fdef (Array.of_list (v_deref :: llargs)) result builder
       | SClassMemAccess (mem, inst, idx) ->
-          print_endline("SClassMemAccess called");
+          print_debug "SClassMemAccess called";
           let v = lookup inst in
           let access = inst ^ "_" ^ mem ^ "_access" in
           let deref = inst ^ "_deref" in
@@ -392,35 +428,35 @@ let translate (mod_name : string) (p : smodule) =
          after the one generated by this call) *)
     let rec build_stmt builder = function
       | SExpr e ->
-          print_endline("SExpr called");
+          print_debug "SExpr called";
           ignore (build_expr builder e);
           builder
       | SReturn e ->
-          print_endline("SReturn called");          
+          print_debug "SReturn called";
           ignore (L.build_ret (build_expr builder e) builder);
           builder
       | SBind b ->
-          print_endline("SBind called");
+          print_debug "SBind called";
           let t, _ = b in
-          
+
           let () =
             local_vars := add_local builder !local_vars b (init_of_typ t)
           in
           builder
       | SBindAssign (b, e) ->
-          print_endline("SBindAssign called");  
+          print_debug "SBindAssign called";
           let () =
             local_vars := add_local builder !local_vars b (build_expr builder e)
           in
           builder
       | SAssign (b, e) ->
-          print_endline("SAssign called"); 
+          print_debug "SAssign called";
           let _, n = b in
           let v = lookup n in
           let _ = L.build_store (build_expr builder e) v builder in
           builder
       | SClassMemRassn (b, inst, idx, e) ->
-          print_endline("SClassMemRassn called"); 
+          print_debug "SClassMemRassn called";
           let _, mem = b in
           let v = lookup inst in
           let deref = inst ^ "_deref" in
@@ -434,7 +470,7 @@ let translate (mod_name : string) (p : smodule) =
           in
           builder
       | SDealloc e ->
-          print_endline("Destructor called"); 
+          print_debug "Destructor called";
           let t, _ = e in
           let v = build_expr builder e in
           (* Call destructor *)
@@ -453,56 +489,65 @@ let translate (mod_name : string) (p : smodule) =
           (* Call free *)
           let _ = L.build_call free_func [| free_intptr_val |] "" builder in
           builder
-
       | SIf (predicate, then_stmt) ->
-          print_endline("Single If called"); 
+          print_debug "Single If called";
           let bool_val = build_expr builder predicate in
 
           let end_bb = L.append_block context "if_end" the_function in
-          let build_br_end = L.build_br end_bb in (* partial function *)
+          let build_br_end = L.build_br end_bb in
 
+          (* partial function *)
           let then_bb = L.append_block context "then" the_function in
-          add_terminal (List.fold_left build_stmt (L.builder_at_end context then_bb) then_stmt)
-          build_br_end;
+          add_terminal
+            (List.fold_left build_stmt
+               (L.builder_at_end context then_bb)
+               then_stmt)
+            build_br_end;
 
-          ignore(L.build_cond_br bool_val then_bb end_bb builder);
+          ignore (L.build_cond_br bool_val then_bb end_bb builder);
           L.builder_at_end context end_bb
-
       | SIfElse (predicate, then_stmt, else_stmt) ->
-          print_endline("If&Else called"); 
+          print_debug "If&Else called";
           let bool_val = build_expr builder predicate in
 
           let end_bb = L.append_block context "if_end" the_function in
-          let build_br_end = L.build_br end_bb in (* partial function *)
+          let build_br_end = L.build_br end_bb in
 
+          (* partial function *)
           let then_bb = L.append_block context "then" the_function in
-          add_terminal (List.fold_left build_stmt (L.builder_at_end context then_bb) then_stmt)
-          build_br_end;
-          
+          add_terminal
+            (List.fold_left build_stmt
+               (L.builder_at_end context then_bb)
+               then_stmt)
+            build_br_end;
 
           let else_bb = L.append_block context "else" the_function in
-          add_terminal (List.fold_left build_stmt (L.builder_at_end context else_bb) else_stmt)
-          build_br_end;
+          add_terminal
+            (List.fold_left build_stmt
+               (L.builder_at_end context else_bb)
+               else_stmt)
+            build_br_end;
 
-          ignore(L.build_cond_br bool_val then_bb else_bb builder);
+          ignore (L.build_cond_br bool_val then_bb else_bb builder);
           L.builder_at_end context end_bb
-
       | SWhile (predicate, body) ->
-          print_endline("While called"); 
+          print_debug "While called";
           let while_bb = L.append_block context "while" the_function in
-          let build_br_while = L.build_br while_bb in (* partial function *)
+          let build_br_while = L.build_br while_bb in
+          (* partial function *)
           ignore (build_br_while builder);
           let while_builder = L.builder_at_end context while_bb in
           let bool_val = build_expr while_builder predicate in
 
           let body_bb = L.append_block context "while_body" the_function in
-          add_terminal (List.fold_left build_stmt (L.builder_at_end context body_bb) body) build_br_while;
+          add_terminal
+            (List.fold_left build_stmt (L.builder_at_end context body_bb) body)
+            build_br_while;
 
           let end_bb = L.append_block context "while_end" the_function in
 
-          ignore(L.build_cond_br bool_val body_bb end_bb while_builder);
+          ignore (L.build_cond_br bool_val body_bb end_bb while_builder);
           L.builder_at_end context end_bb
-
       | _ -> raise (Unimplemented "unimplemented statement")
       (*
             | SIf (predicate, then_stmt, else_stmt) ->
@@ -539,22 +584,22 @@ let translate (mod_name : string) (p : smodule) =
     in
 
     (* Build the code for each statement in the function *)
-    print_endline("No. of statements in this function is " ^
-                  string_of_int(List.length fdecl.sbody));
+    print_debug
+      ( "No. of statements in this function is "
+      ^ string_of_int (List.length fdecl.sbody) );
     let func_builder = List.fold_left build_stmt builder fdecl.sbody in
 
     (* Add a return if the last block falls off the end *)
     if fdecl.srtyp = Void then add_terminal func_builder L.build_ret_void
     else add_terminal func_builder (L.build_ret (L.const_int i32_t 0))
   in
-  print_endline( string_of_int (List.length curr_mod_functions));
-  List.map (fun a -> print_endline (a.sfname)) curr_mod_functions;
-  print_endline("-----------");
+  print_debug (string_of_int (List.length curr_mod_functions));
+  List.map (fun a -> print_debug a.sfname) curr_mod_functions;
+  print_debug "-----------";
   List.iter build_function_body curr_mod_functions;
   let () =
     if !has_main then
       let _ = build_function_body main_fdecl in
-      print_endline("there is no main function.");
       ()
     else ()
   in
