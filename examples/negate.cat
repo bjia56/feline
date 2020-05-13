@@ -1,0 +1,11 @@
+PLS GIV STDIO?
+
+HAI ME TEH INTEGR FUNC MAIN
+    IF OPOZIT YEZ
+        MEOW WIT "Should not print" KTHX
+    KTHX
+
+    IF OPOZIT NO
+        MEOW WIT "Should print" KTHX
+    KTHX
+KTHXBAI

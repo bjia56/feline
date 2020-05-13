@@ -349,6 +349,10 @@ let translate (mod_name : string) (p : smodule) =
           | Less -> L.build_icmp L.Icmp.Slt
           | Greater -> L.build_icmp L.Icmp.Sgt )
             e1' e2' "tmp" builder
+      | SUnop (u, e) ->
+          print_debug "SUnop called";
+          let e' = build_expr builder e in
+          L.build_not e' "not" builder
       | SFunctcall ("main_load_args", args) ->
           let llargs =
             List.rev (List.map (build_expr builder) (List.rev args))
