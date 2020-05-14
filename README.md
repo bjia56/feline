@@ -18,3 +18,14 @@ Run compiler test cases:
 ```
 ./feline.native -test
 ```
+
+Generate IR:
+```
+./feline.native -file file1.cat -ir
+cat file1.ir
+```
+
+Build with gcc static linking (sometimes required in more recent Linux distros):
+```
+./feline.native -file file1.cat -out out.exe -static
+```
